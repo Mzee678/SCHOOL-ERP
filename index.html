@@ -8,7 +8,7 @@
 <style>
 :root{--bg:#e8e8f6;--panel:#f6f6fd;--card:#fff;--ink:#23232f;--mute:#7d7d90;--acc:#8b7fd6;--accd:#6d60c0;--soft:#ecebfa;--dark:#1d1d24;--line:#ececf5;--ok:#2e8b5e;--err:#c0392b}
 @media (prefers-color-scheme:dark){:root{--bg:#15151c;--panel:#1d1d27;--card:#262633;--ink:#ececf4;--mute:#a0a0b4;--acc:#a79df0;--accd:#a79df0;--soft:#34324d;--dark:#0e0e13;--line:#32323f;--ok:#5fcf97;--err:#ff8d8d}}
-*{box-sizing:border-box}
+*{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Outfit,system-ui,sans-serif;font-size:14px;padding:20px;min-height:100vh}
 button,input,select,textarea{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
@@ -73,7 +73,7 @@ const niceErr = e => {
   return m;
 };
 
-let me = null, view = "home", tab = "in", notice = "", busy = false;
+let me = null, view = "home", tab = "in", notice = "", busy = false, ctx = null, goClass = null;
 
 /* ---- start ---- */
 sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { me = null; renderAuth(); } });
@@ -84,26 +84,25 @@ sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { me = null; render
 
 async function enter() {
   const { data: { user } } = await sb.auth.getUser();
-  const { data: p } = user ? await sb.from("profiles").select("id,username,role,display_name,is_active").eq("id", user.id).maybeSingle() : { data: null };
+  const { data: p } = user ? await sb.from("profiles").select("id,username,role,display_name,is_active,must_change_password").eq("id", user.id).maybeSingle() : { data: null };
   if (!p || !p.is_active) { await sb.auth.signOut(); notice = "This account is not active. Contact your school or tutor."; return renderAuth(); }
-  me = p; view = "home"; renderApp();
+  me = p; if (p.must_change_password) return renderForcePw(); start();
 }
 
-/* ---- sign in / sign up / join ---- */
+/* ---- sign in / join (accounts are created by your school, not by learners) ---- */
 function renderAuth() {
+  if (tab === "new") tab = "in";
   $("root").innerHTML = `<div class="auth"><div class="logo"></div>
   <h1>School ERP</h1><div class="sub">Learn to code with your class.</div>
-  <div class="tabs" id="tabs"><button data-t="in" class="${tab === "in" ? "on" : ""}">Sign in</button><button data-t="join" class="${tab === "join" ? "on" : ""}">Join a class</button><button data-t="new" class="${tab === "new" ? "on" : ""}">New account</button></div>
+  <div class="tabs" id="tabs"><button data-t="in" class="${tab === "in" ? "on" : ""}">Sign in</button><button data-t="join" class="${tab === "join" ? "on" : ""}">Join a class</button></div>
   <form id="af" autocomplete="on">
    ${tab === "join" ? `<label class="f">Class code<input type="text" id="code" placeholder="K7QM-3XPD" maxlength="12" required></label>` : ""}
    <label class="f">Username<input type="text" id="u" autocomplete="username" required minlength="3" maxlength="30"></label>
-   <label class="f">Password<input type="password" id="p" autocomplete="${tab === "in" ? "current-password" : "new-password"}" required minlength="8"></label>
-   ${tab !== "in" ? `<label class="f">Your name<input type="text" id="dn" maxlength="60"></label><label class="f">Email (optional)<input type="email" id="em"></label>` : ""}
-   ${tab === "new" ? `<label class="f">I am a<select id="role"><option value="learner">Learner</option><option value="tutor">Tutor</option><option value="family">Parent or guardian</option></select></label>` : ""}
+   <label class="f">Password<input type="password" id="p" autocomplete="current-password" required></label>
    <div class="msg ${notice ? "e" : ""}" id="am" role="alert">${esc(notice)}</div>
-   <button class="btn p" style="width:100%;padding:11px" id="ab">${{ in: "Sign in", join: "Join class", new: "Create account" }[tab]}</button>
+   <button class="btn p" style="width:100%;padding:11px" id="ab">${tab === "join" ? "Sign in and join class" : "Sign in"}</button>
   </form>
-  ${tab === "join" ? `<div class="sub" style="margin-top:12px">New here? Pick a username and password and we create your account. Already have one? Use it.</div>` : ""}</div>`;
+  <div class="sub" style="margin-top:12px">Your school gives you your username and a first password. You choose your own password the first time you sign in. Lost your password? Ask your school or tutor.</div></div>`;
   notice = "";
   $("tabs").onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; renderAuth(); } };
   $("af").onsubmit = onAuth;
@@ -112,33 +111,32 @@ const say = (t, ok) => { const m = $("am"); if (m) { m.className = "msg " + (ok 
 
 async function onAuth(e) {
   e.preventDefault();
-  const u = $("u").value.trim(), p = $("p").value;
-  if (!/^[A-Za-z0-9_.-]{3,30}$/.test(u)) return say("Username: 3 to 30 letters, numbers, dots, dashes or underscores.");
-  $("ab").disabled = true;
+  const u = $("u").value.trim(), p = $("p").value; $("ab").disabled = true;
   try {
-    const meta = r => ({ username: u.toLowerCase(), role: r, display_name: ($("dn")?.value.trim()) || u, contact_email: $("em")?.value.trim() || "" });
+    const { error } = await sb.auth.signInWithPassword({ email: mail(u), password: p });
+    if (error) throw error;
     let joinNote = "";
-    if (tab === "in") {
-      const { error } = await sb.auth.signInWithPassword({ email: mail(u), password: p });
-      if (error) throw error;
-    } else if (tab === "new") {
-      const { data, error } = await sb.auth.signUp({ email: mail(u), password: p, options: { data: meta($("role").value) } });
-      if (error) throw error;
-      if (!data.session) throw new Error("Sign-up worked but you were not signed in. In Supabase, turn off Confirm email (Authentication > Providers > Email).");
-    } else {
-      let r = await sb.auth.signInWithPassword({ email: mail(u), password: p });
-      if (r.error) {
-        const su = await sb.auth.signUp({ email: mail(u), password: p, options: { data: meta("learner") } });
-        if (su.error) throw new Error(/already registered/i.test(su.error.message) ? "That username is taken, or the password is wrong." : su.error.message);
-        if (!su.data.session) throw new Error("Account created but not signed in. Turn off Confirm email in Supabase Auth settings.");
-      }
-      const { error } = await sb.rpc("join_class", { p_code: $("code").value });
-      if (error) joinNote = "You are signed in, but the class code did not work: " + error.message;
+    if (tab === "join") {
+      const { data: jd, error: je } = await sb.rpc("join_class", { p_code: $("code").value });
+      if (je) joinNote = "You are signed in, but the class code did not work: " + je.message; else goClass = jd.class_id;
     }
     await enter();
     if (joinNote) flash(joinNote, true);
   } catch (err) { say(niceErr(err)); const b = $("ab"); if (b) b.disabled = false; }
 }
+
+function renderForcePw() {
+  $("root").innerHTML = `<div class="auth"><div class="logo"></div><h1>Choose your own password</h1><div class="sub">Hi ${esc(me.display_name)}. Your first password was given to you, so pick a new one only you know.</div>
+  <form id="pf"><label class="f">New password (8 or more characters)<input type="password" id="np1" autocomplete="new-password" minlength="8" required></label>
+  <label class="f">Type it again<input type="password" id="np2" autocomplete="new-password" minlength="8" required></label>
+  <div class="msg" id="am" role="alert"></div><button class="btn p" style="width:100%;padding:11px">Save password</button></form></div>`;
+  $("pf").onsubmit = async e => { e.preventDefault();
+    if ($("np1").value !== $("np2").value) return say("The two passwords do not match.");
+    const r = await sb.auth.updateUser({ password: $("np1").value }); if (r.error) return say(r.error.message);
+    const q2 = await sb.from("profiles").update({ must_change_password: false }).eq("id", me.id); if (q2.error) return say(q2.error.message);
+    me.must_change_password = false; start(); };
+}
+function start() { view = goClass ? "class" : "home"; ctx = goClass; goClass = null; renderApp(); }
 
 /* ---- shell ---- */
 function renderApp() {
@@ -148,10 +146,11 @@ function renderApp() {
   $("root").innerHTML = `<div class="app"><nav aria-label="Menu"><div class="logo"></div>
    ${items.map(([v, t, p]) => `<button data-v="${v}" class="${v === view ? "on" : ""}" title="${t}" aria-label="${t}">${ic(p)}</button>`).join("")}
    <div class="sp"></div><button id="so" title="Sign out" aria-label="Sign out">${ic(ICON.out)}</button></nav><main id="main"></main></div>`;
-  document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut(); view = b.dataset.v; renderApp(); };
-  if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL }[view])();
-  else if (tutor) tutorHome();
-  else $("main").innerHTML = `<h1>Hello, ${esc(me.display_name)}</h1><div class="sub">The ${esc(me.role)} dashboard is not built yet. It is coming after the student and tutor pages.</div>`;
+  document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut(); view = b.dataset.v; ctx = null; renderApp(); };
+  if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL, class: classL }[view])();
+  else if (tutor) (view === "tclass" ? tclassPage : tutorHome)();
+  else if (me.role === "school" || me.role === "admin") accountsPage();
+  else $("main").innerHTML = `<h1>Hello, ${esc(me.display_name)}</h1><div class="sub">The ${esc(me.role)} dashboard is not built yet.</div>`;
 }
 function flash(t, err) { const m = $("main"); if (!m) return; const d = document.createElement("div"); d.className = "msg " + (err ? "e" : "g"); d.textContent = t; m.prepend(d); }
 const bad = (err, where) => { console.error(err); (where || $("main")).insertAdjacentHTML("afterbegin", `<div class="msg e">${esc(err.message || err)}</div>`); };
@@ -180,11 +179,11 @@ async function homeL() {
       return `<div class="item"><div class="ic">${esc(c.title.slice(0, 2))}</div><div><b>${esc(c.title)}</b><small>${d} of ${n} lessons</small><div class="bar"><i style="width:${pc}%"></i></div></div><button class="btn" data-go="courses">Continue</button></div>`; }).join("") : `<div class="mute">No courses yet. Your tutor will add courses to your class.</div>`}</div>
    <div class="card"><h2>Pending assignments</h2>${pending.length ? pending.map(a => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(a.title)}</b><small>${esc(a.classes?.name)} · ${a.due_at ? "Due " + new Date(a.due_at).toLocaleDateString("en-GB") : "No deadline"}</small></div></div>`).join("") : `<div class="mute">Nothing due. Nice.</div>`}</div>
   </div><div>
-   <div class="card"><h2>My classes</h2>${cl.data.length ? cl.data.map(m => `<div class="item"><div class="ic">${esc((m.classes?.name || "?").slice(0, 2))}</div><div><b>${esc(m.classes?.name)}</b><small>Tutor ${esc(m.classes?.profiles?.display_name)}${m.classes?.schools ? " · " + esc(m.classes.schools.name) : ""}</small></div></div>`).join("") : `<div class="mute">You have not joined a class yet.</div><div style="margin-top:10px"><button class="btn p" data-go="join">Join a class</button></div>`}</div>
+   <div class="card"><h2>My classes</h2>${cl.data.length ? cl.data.map(m => `<div class="item"><div class="ic">${esc((m.classes?.name || "?").slice(0, 2))}</div><div><b>${esc(m.classes?.name)}</b><small>Tutor ${esc(m.classes?.profiles?.display_name)}${m.classes?.schools ? " · " + esc(m.classes.schools.name) : ""}</small></div><button class="btn" data-class="${m.classes?.id}">Open</button></div>`).join("") : `<div class="mute">You have not joined a class yet.</div><div style="margin-top:10px"><button class="btn p" data-go="join">Join a class</button></div>`}</div>
    <div class="card"><h2>Achievements</h2>${ach.data.length ? ach.data.map(a => `<span class="badge">${esc(a.achievements?.title)}</span>`).join("") : `<div class="mute">Finish a lesson or save a project to earn your first badge.</div>`}</div>
    <div class="card"><h2>Recent projects</h2>${pj.data.slice(0, 4).map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>${new Date(p.updated_at).toLocaleString("en-GB")}</small></div></div>`).join("") || `<div class="mute">No projects yet.</div>`}</div>
   </div></div>`;
-  $("main").onclick = e => { const g = e.target.dataset.go; if (g) { view = g; renderApp(); } };
+  $("main").onclick = e => { const g = e.target.dataset.go, k = e.target.dataset.class; if (k) { view = "class"; ctx = k; renderApp(); } else if (g) { view = g; renderApp(); } };
 }
 
 /* ---- learner: courses ---- */
@@ -212,69 +211,218 @@ function joinL() {
   $("jb").onclick = async () => { const m = $("jm"); $("jb").disabled = true;
     const { data, error } = await sb.rpc("join_class", { p_code: $("jc").value });
     $("jb").disabled = false;
-    if (error) { m.className = "msg e"; m.textContent = error.message; } else { m.className = "msg g"; m.textContent = "You joined " + data.name + "."; $("jc").value = ""; } };
+    if (error) { m.className = "msg e"; m.textContent = error.message; } else { m.className = "msg g"; m.textContent = "You joined " + data.name + "."; $("jc").value = ""; view = "class"; ctx = data.class_id; renderApp(); } };
 }
 
-/* ---- learner: coding workspace ---- */
+/* ---- school and admin: accounts ---- */
+async function callAccounts(body) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(SB_URL + "/functions/v1/manage-accounts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: SB_KEY }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ error: "The account service did not answer. Is the manage-accounts function deployed?" }));
+  if (!r.ok) throw new Error(j.error || "Request failed"); return j;
+}
+function csvDownload(rows) {
+  const csv = "Name,Username,Password\n" + rows.map(r => [r.name, r.username, r.password].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "new-accounts.csv"; a.click();
+}
+const gradeOf = x => (Array.isArray(x) ? x[0] : x)?.grade_level ?? "";
+async function accountsPage() {
+  const isAdmin = me.role === "admin";
+  $("main").innerHTML = `<div class="mute">Loading...</div>`;
+  const [pr, sc] = await Promise.all([
+    sb.from("profiles").select("id,username,display_name,role,is_active,student_profiles(grade_level)").neq("id", me.id).order("display_name").limit(500),
+    isAdmin ? sb.from("schools").select("id,name").order("name") : Promise.resolve({ data: [] })]);
+  if (pr.error || sc.error) return bad(pr.error || sc.error);
+  const roles = isAdmin ? [["learner", "Learners"], ["tutor", "Tutors"], ["family", "Parents"], ["school", "School administrators"]] : [["learner", "Learners"], ["tutor", "Tutors"]];
+  $("main").innerHTML = `<h1>${isAdmin ? "Platform admin" : "School accounts"}</h1><div class="sub">Learners and tutors cannot sign themselves up. You create every account here.</div>
+  ${isAdmin ? `<div class="card" style="max-width:560px"><h2>Schools</h2><div class="row"><input type="text" id="sn" placeholder="New school name" maxlength="80" aria-label="School name"><button class="btn p" id="sa">Add school</button></div><div style="margin-top:10px">${sc.data.map(s => `<span class="badge">${esc(s.name)}</span>`).join("") || `<span class="mute">No schools yet.</span>`}</div></div>` : ""}
+  <div class="card"><h2>Create accounts</h2><div class="row"><select id="cr" aria-label="Account type">${roles.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>
+   ${isAdmin ? `<select id="cs" aria-label="School"><option value="">School...</option>${sc.data.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>` : ""}</div>
+   <label class="f" style="margin-top:10px"><span id="hint"></span><textarea id="cl" style="height:110px;background:var(--card);color:var(--ink)" spellcheck="false"></textarea></label>
+   <button class="btn p" id="cb">Create accounts</button><div class="msg" id="cm" role="alert"></div><div id="res"></div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">People</h2><select id="ff" aria-label="Filter" style="width:auto"><option value="">Everyone</option>${roles.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></div><div id="pp"></div></div>`;
+  const hint = () => { const r = $("cr").value; $("hint").textContent = r === "learner" ? "One learner per line: Name, grade (for example Amina Noor, 6)" : "One name per line"; };
+  hint(); $("cr").onchange = hint;
+  const list = () => { const f = $("ff").value;
+    $("pp").innerHTML = pr.data.filter(p => !f || p.role === f).map(p => `<div class="item"><div class="ic">${esc(p.display_name.slice(0, 2))}</div><div><b>${esc(p.display_name)}</b><small>${esc(p.username)} · ${p.role}${p.is_active ? "" : " · suspended"}</small></div>
+      ${p.role === "learner" ? `<select data-g="${p.id}" aria-label="Grade" style="width:84px"><option value="">Grade</option>${[1,2,3,4,5,6,7,8,9,10,11,12,13].map(g => `<option ${gradeOf(p.student_profiles) == g ? "selected" : ""}>${g}</option>`).join("")}</select>` : ""}
+      <button class="btn" data-rp="${p.id}" data-n="${esc(p.display_name)}">Reset password</button>${isAdmin ? `<button class="btn" data-sus="${p.id}" data-on="${p.is_active}">${p.is_active ? "Suspend" : "Activate"}</button>` : ""}</div>`).join("") || `<div class="mute">Nobody here yet.</div>`; };
+  list(); $("ff").onchange = list;
+  const note = (t, ok) => { $("cm").className = "msg " + (ok ? "g" : "e"); $("cm").textContent = t; };
+  if (isAdmin) $("sa").onclick = async () => { const n = $("sn").value.trim(); if (n.length < 2) return; const { error } = await sb.from("schools").insert({ name: n }); error ? bad(error) : accountsPage(); };
+  $("cb").onclick = async () => {
+    const role = $("cr").value, school = isAdmin ? $("cs").value : null, lines = $("cl").value.split("\n").map(l => l.trim()).filter(Boolean), people = [];
+    if (isAdmin && ["learner", "school"].includes(role) && !school) return note("Choose a school.");
+    for (const l of lines) { if (role === "learner") { const m = l.match(/^(.+?)[,;\t ]+(\d{1,2})$/); if (!m || +m[2] < 1 || +m[2] > 13) return note('Line "' + l + '" needs a name and a grade from 1 to 13, like: Amina Noor, 6'); people.push({ name: m[1].replace(/[,;]+$/, "").trim(), grade: +m[2] }); } else people.push({ name: l }); }
+    if (!people.length) return note("Type at least one name.");
+    $("cb").disabled = true; note("Creating...", true);
+    try { const { results } = await callAccounts({ action: "create", role, school_id: school || null, people }); const ok = results.filter(r => r.ok), fail = results.filter(r => !r.ok);
+      $("res").innerHTML = `${ok.length ? `<h2 style="margin-top:14px">Save these now. Passwords are shown only once.</h2><div class="mute" style="margin-bottom:8px">Each person must choose a new password when they first sign in.</div><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left"><th>Name</th><th>Username</th><th>Password</th></tr>${ok.map(r => `<tr><td>${esc(r.name)}</td><td><code>${esc(r.username)}</code></td><td><code>${esc(r.password)}</code></td></tr>`).join("")}</table><div style="margin-top:10px"><button class="btn" id="dl">Download as CSV</button></div>` : ""}${fail.map(r => `<div class="msg e">${esc(r.name)}: ${esc(r.error)}</div>`).join("")}`;
+      if ($("dl")) $("dl").onclick = () => csvDownload(ok); note(ok.length + " account(s) created" + (fail.length ? ", " + fail.length + " failed." : "."), !fail.length); $("cl").value = ""; refreshPeople();
+    } catch (e) { note(niceErr(e)); } $("cb").disabled = false; };
+  const refreshPeople = async () => { const r = await sb.from("profiles").select("id,username,display_name,role,is_active,student_profiles(grade_level)").neq("id", me.id).order("display_name").limit(500); if (!r.error) { pr.data = r.data; list(); } };
+  $("pp").onchange = async e => { const g = e.target.dataset.g; if (!g || !e.target.value) return; const { error } = await sb.rpc("set_student_grade", { p_student: g, p_grade: +e.target.value }); note(error ? error.message : "Grade saved.", !error); };
+  $("pp").onclick = async e => { const d = e.target.dataset;
+    if (d.rp && confirm("Reset the password for " + d.n + "?")) { try { const { password } = await callAccounts({ action: "reset", user_id: d.rp }); $("res").innerHTML = `<h2 style="margin-top:14px">New password for ${esc(d.n)}</h2><code style="font-size:16px">${esc(password)}</code><div class="mute">Shown once. They must choose a new password when they sign in.</div>`; note("Password reset.", true); window.scrollTo(0, 0); } catch (er) { note(niceErr(er)); } }
+    if (d.sus) { const { error } = await sb.rpc("admin_set_active", { p_user: d.sus, p_active: d.on !== "true" }); error ? note(error.message) : accountsPage(); } };
+}
+
+/* ---- shared: build a preview page ---- */
+const LBL = { html: "HTML", css: "CSS", js: "JavaScript" };
+const buildDoc = (html, css, js) => `<style>${css || ""}</style>${html || ""}<script>["log","error","warn"].forEach(function(k){console[k]=function(){parent.postMessage({k:k,m:[].slice.call(arguments).join(" ")},"*")}});window.onerror=function(m){parent.postMessage({k:"error",m:String(m)},"*")};<\/script><script>${js || ""}<\/script>`;
+async function download(path) {
+  const { data, error } = await sb.storage.from("class-notes").createSignedUrl(path, 3600);
+  if (error) return flash(error.message, true);
+  const a = document.createElement("a"); a.href = data.signedUrl; a.target = "_blank"; a.rel = "noopener"; a.click();
+}
+const noteHtml = n => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(n.title)}</b>${n.body ? `<small style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}</small>` : ""}<small>${new Date(n.created_at).toLocaleDateString("en-GB")}${n.file_name ? " · " + esc(n.file_name) : ""}</small></div>${n.file_path ? `<button class="btn" data-f="${esc(n.file_path)}">Download</button>` : ""}</div>`;
+
+/* ---- learner: class page (where the join code lands) ---- */
+async function classL() {
+  const id = ctx; $("main").innerHTML = `<div class="mute">Loading...</div>`;
+  const [c, n, a, sub, cc, pr] = await Promise.all([
+    sb.from("classes").select("id,name,announcement,workspace_tabs,schools(name),profiles!classes_tutor_id_fkey(display_name)").eq("id", id).single(),
+    sb.from("class_notes").select("id,title,body,file_path,file_name,created_at").eq("class_id", id).order("created_at", { ascending: false }),
+    sb.from("assignments").select("id,title,due_at").eq("class_id", id).order("due_at", { nullsFirst: false }),
+    sb.from("submissions").select("assignment_id").eq("student_id", me.id),
+    sb.from("class_courses").select("courses(id,title,lessons(id))").eq("class_id", id),
+    sb.from("progress_records").select("lesson_id").eq("student_id", me.id)]);
+  const err = [c, n, a, sub, cc, pr].find(r => r.error); if (err) return bad(err.error);
+  const k = c.data, done = new Set(pr.data.map(x => x.lesson_id)), sent = new Set(sub.data.map(x => x.assignment_id));
+  $("main").innerHTML = `<div style="margin-bottom:8px"><button class="btn" data-go="home">&larr; Home</button></div>
+  <h1>${esc(k.name)}</h1><div class="sub">Tutor ${esc(k.profiles?.display_name)}${k.schools ? " · " + esc(k.schools.name) : ""}</div>
+  ${k.announcement ? `<div class="card"><h2>From your tutor</h2><div style="white-space:pre-wrap">${esc(k.announcement)}</div></div>` : ""}
+  <div class="cols"><div>
+   <div class="card"><h2>Coding space</h2><div class="mute" style="margin-bottom:10px">In this class you write: ${k.workspace_tabs.map(t => `<span class="badge">${LBL[t]}</span>`).join("")}</div><button class="btn p" data-work="1">Open coding space</button></div>
+   <div class="card"><h2>Class notes</h2>${n.data.map(noteHtml).join("") || `<div class="mute">No notes yet. Your tutor will add them here.</div>`}</div>
+  </div><div>
+   <div class="card"><h2>Assignments</h2>${a.data.map(x => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(x.title)}</b><small>${x.due_at ? "Due " + new Date(x.due_at).toLocaleDateString("en-GB") : "No deadline"}${sent.has(x.id) ? " · Submitted" : ""}</small></div></div>`).join("") || `<div class="mute">Nothing assigned yet.</div>`}</div>
+   <div class="card"><h2>Courses</h2>${cc.data.map(x => x.courses).filter(Boolean).map(c2 => { const t = c2.lessons.length, d = c2.lessons.filter(l => done.has(l.id)).length; return `<div class="item"><div class="ic">${esc(c2.title.slice(0, 2))}</div><div><b>${esc(c2.title)}</b><small>${d} of ${t} lessons</small><div class="bar"><i style="width:${t ? 100 * d / t : 0}%"></i></div></div><button class="btn" data-go="courses">Open</button></div>`; }).join("") || `<div class="mute">No courses assigned yet.</div>`}</div>
+  </div></div>`;
+  $("main").onclick = e => { const g = e.target.dataset.go, f = e.target.dataset.f;
+    if (g) { view = g; ctx = null; renderApp(); } if (e.target.dataset.work) { view = "work"; renderApp(); } if (f) download(f); };
+}
+
+/* ---- learner: coding workspace (free, or inside a class with the tutor's rules) ---- */
 const STARTER = { html: '<h1>Hello!</h1>\n<button id="b">Click me</button>', css: "body{font-family:sans-serif;text-align:center;padding:30px}\nbutton{padding:10px 18px;font-size:16px}", js: 'document.getElementById("b").onclick=function(){\n  document.body.style.background="#ecebfa";\n  console.log("Button clicked");\n};' };
-let W = { id: null, name: "My first project", files: { ...STARTER }, tab: "html", timer: null };
+let W = null;
+const starterFor = tabs => Object.fromEntries(tabs.map(t => [t, STARTER[t]]));
 async function workL() {
-  $("main").innerHTML = `<h1>Coding workspace</h1><div class="sub">Your work saves automatically once you have saved it once.</div>
+  let cls = null;
+  if (ctx) { const { data, error } = await sb.from("classes").select("id,name,workspace_tabs,workspace_html").eq("id", ctx).single(); if (error) return bad(error); cls = data; }
+  const tabs = cls ? cls.workspace_tabs : ["html", "css", "js"];
+  if (!W || W.ctx !== ctx) W = { id: null, ctx, name: cls ? "" : "My first project", files: starterFor(tabs), tab: tabs[0], timer: null };
+  W.tabs = tabs; W.cls = cls; if (!tabs.includes(W.tab)) W.tab = tabs[0];
+  $("main").innerHTML = `${cls ? `<div style="margin-bottom:8px"><button class="btn" data-go="class">&larr; Back to ${esc(cls.name)}</button></div>` : ""}<h1>Coding space</h1>
+  <div class="sub">${cls ? esc(cls.name) + " · you can write " + tabs.map(t => LBL[t]).join(", ") : "Your own free space"}. Your work saves automatically once you have saved it once.</div>
   <div class="card"><div class="row" style="margin-bottom:10px"><input type="text" id="pn" aria-label="Project name" placeholder="Project name" maxlength="80"><button class="btn p" id="run">Run</button><button class="btn" id="sv">Save</button><button class="btn" id="rs">Reset</button><button class="btn" id="np">New project</button></div>
-  <div class="ws"><div><div class="tabs" id="tb"><button data-t="html">HTML</button><button data-t="css">CSS</button><button data-t="js">JavaScript</button></div><textarea id="ed" spellcheck="false" aria-label="Code editor"></textarea></div>
+  <div class="ws"><div><div class="tabs" id="tb">${tabs.map(t => `<button data-t="${t}">${LBL[t]}</button>`).join("")}</div><textarea id="ed" spellcheck="false" aria-label="Code editor"></textarea></div>
   <div><div class="tabs"><button class="on" style="cursor:default">Live preview</button></div><iframe id="fr" sandbox="allow-scripts" title="Preview"></iframe></div></div>
   <div class="con" id="con" aria-live="polite">Console output appears here.</div><div class="msg" id="wm"></div></div>
   <div class="card"><h2>My projects</h2><div id="pl" class="mute">Loading...</div></div>`;
-  $("pn").value = W.name; $("ed").value = W.files[W.tab]; markTab();
-  $("tb").onclick = e => { const t = e.target.dataset.t; if (t) { W.tab = t; $("ed").value = W.files[t]; markTab(); } };
+  $("pn").value = W.name; $("ed").value = W.files[W.tab] || ""; markTab();
+  $("main").onclick = e => { if (e.target.dataset.go) { view = "class"; renderApp(); } };
+  $("tb").onclick = e => { const t = e.target.dataset.t; if (t) { W.tab = t; $("ed").value = W.files[t] || ""; markTab(); } };
   $("ed").oninput = e => { W.files[W.tab] = e.target.value; clearTimeout(W.timer); W.timer = setTimeout(() => { runCode(); if (W.id) save(true); }, 1200); };
   $("run").onclick = runCode; $("sv").onclick = () => save(false);
-  $("rs").onclick = () => { W.files = { ...STARTER }; $("ed").value = W.files[W.tab]; runCode(); };
-  $("np").onclick = () => { W = { id: null, name: "", files: { html: "", css: "", js: "" }, tab: "html", timer: null }; $("pn").value = ""; $("ed").value = ""; markTab(); runCode(); };
+  $("rs").onclick = () => { W.files = starterFor(tabs); $("ed").value = W.files[W.tab]; runCode(); };
+  $("np").onclick = () => { W = { id: null, ctx, name: "", files: Object.fromEntries(tabs.map(t => [t, ""])), tab: tabs[0], timer: null, tabs, cls }; $("pn").value = ""; $("ed").value = ""; markTab(); runCode(); };
   $("pl").onclick = async e => { const o = e.target.dataset.o, x = e.target.dataset.x;
     if (o) { const { data, error } = await sb.from("coding_projects").select("*").eq("id", o).single(); if (error) return flash(error.message, true);
-      W = { id: data.id, name: data.name, files: { html: "", css: "", js: "", ...data.files }, tab: "html", timer: null }; $("pn").value = W.name; $("ed").value = W.files.html; markTab(); runCode(); }
+      W = { id: data.id, ctx, name: data.name, files: Object.fromEntries(tabs.map(t => [t, data.files?.[t] || ""])), tab: tabs[0], timer: null, tabs, cls }; $("pn").value = W.name; $("ed").value = W.files[W.tab]; markTab(); runCode(); }
     if (x && confirm("Delete this project?")) { const { error } = await sb.from("coding_projects").delete().eq("id", x); if (error) return flash(error.message, true); if (W.id === x) W.id = null; listProjects(); } };
   runCode(); listProjects();
 }
 const markTab = () => [...$("tb").children].forEach(b => b.classList.toggle("on", b.dataset.t === W.tab));
 function runCode() {
-  const f = W.files; $("con").textContent = "";
-  $("fr").srcdoc = `<style>${f.css}</style>${f.html}<script>["log","error","warn"].forEach(function(k){console[k]=function(){parent.postMessage({k:k,m:[].slice.call(arguments).join(" ")},"*")}});window.onerror=function(m){parent.postMessage({k:"error",m:String(m)},"*")};<\/script><script>${f.js}<\/script>`;
+  const f = W.files, fixed = W.cls ? (W.cls.workspace_html || "<p>Your tutor has not added a page to style yet.</p>") : "";
+  $("con").textContent = ""; $("fr").srcdoc = buildDoc(W.tabs.includes("html") ? f.html : fixed, f.css, f.js);
 }
 addEventListener("message", e => { const fr = $("fr"); if (!fr || e.source !== fr.contentWindow || !e.data) return; const d = document.createElement("div"); if (e.data.k === "error") d.className = "er"; d.textContent = String(e.data.m); $("con").appendChild(d); });
 async function save(auto) {
   const name = $("pn").value.trim() || "Untitled project"; W.name = name; let r;
-  if (W.id) { r = await sb.from("coding_projects").update({ name, files: W.files, updated_at: new Date().toISOString() }).eq("id", W.id);
-    if (!r.error && !auto) await sb.from("project_versions").insert({ project_id: W.id, files: W.files }); }
-  else { r = await sb.from("coding_projects").insert({ owner_id: me.id, name, files: W.files }).select("id").single(); if (!r.error) W.id = r.data.id; }
+  const files = Object.fromEntries(W.tabs.map(t => [t, W.files[t] || ""]));
+  if (W.id) { r = await sb.from("coding_projects").update({ name, files, updated_at: new Date().toISOString() }).eq("id", W.id);
+    if (!r.error && !auto) await sb.from("project_versions").insert({ project_id: W.id, files }); }
+  else { r = await sb.from("coding_projects").insert({ owner_id: me.id, name, files, class_id: ctx }).select("id").single(); if (!r.error) W.id = r.data.id; }
   const m = $("wm"); if (!m) return;
   if (r.error) { m.className = "msg e"; m.textContent = r.error.message; } else { m.className = "msg g"; m.textContent = (auto ? "Autosaved " : "Saved ") + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); listProjects(); }
 }
 async function listProjects() {
-  const { data, error } = await sb.from("coding_projects").select("id,name,updated_at").eq("owner_id", me.id).order("updated_at", { ascending: false });
-  const box = $("pl"); if (!box) return; if (error) return (box.textContent = error.message);
+  let q = sb.from("coding_projects").select("id,name,updated_at").eq("owner_id", me.id).order("updated_at", { ascending: false });
+  q = ctx ? q.eq("class_id", ctx) : q.is("class_id", null);
+  const { data, error } = await q; const box = $("pl"); if (!box) return; if (error) return (box.textContent = error.message);
   box.className = ""; box.innerHTML = data.length ? data.map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>Saved ${new Date(p.updated_at).toLocaleString("en-GB")}</small></div><button class="btn" data-o="${p.id}">Open</button><button class="btn" data-x="${p.id}">Delete</button></div>`).join("") : `<div class="mute">No saved projects yet. Write some code and select Save.</div>`;
 }
 
-/* ---- tutor: classes (minimal, so you can test joining end to end) ---- */
+/* ---- tutor: class list ---- */
 async function tutorHome() {
-  $("main").innerHTML = `<h1>My classes</h1><div class="sub">Create a class, share its code, and give it a course.</div>
+  $("main").innerHTML = `<h1>My classes</h1><div class="sub">Create a class, share its code, then open it to control what your learners see.</div>
   <div class="card" style="max-width:560px"><h2>New class</h2><div class="row"><input type="text" id="cn" placeholder="Class name, like Grade 6 Python" maxlength="80" aria-label="Class name"><select id="cg" aria-label="Grade"><option value="">Grade</option>${[1,2,3,4,5,6,7,8,9,10,11,12].map(g => `<option>${g}</option>`).join("")}</select><button class="btn p" id="mk">Create</button></div><div class="msg" id="tm" role="alert"></div></div><div id="tl" class="mute">Loading...</div>`;
   $("mk").onclick = async () => { const { error } = await sb.rpc("create_class", { p_name: $("cn").value, p_grade: $("cg").value ? +$("cg").value : null }); const m = $("tm");
     if (error) { m.className = "msg e"; m.textContent = error.message; } else tutorHome(); };
-  const [cl, co] = await Promise.all([
-    sb.from("classes").select("id,name,grade_level,status,class_codes(code,is_active),class_memberships(student_id,profiles(display_name,username)),class_courses(course_id)").eq("tutor_id", me.id).order("created_at", { ascending: false }),
-    sb.from("courses").select("id,title").order("title")]);
-  if (cl.error || co.error) return bad(cl.error || co.error);
-  $("tl").outerHTML = `<div id="tl">${cl.data.map(c => { const code = c.class_codes.find(k => k.is_active)?.code, st = c.class_memberships;
-    return `<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(c.name)}</b><div class="mute">${c.grade_level ? "Grade " + c.grade_level + " · " : ""}${st.length} learner${st.length === 1 ? "" : "s"}</div></div>
-     <div>${code ? `<span class="code">${pretty(code)}</span>` : ""} <button class="btn" data-rot="${c.id}">New code</button></div></div>
-     <div class="row" style="margin-top:12px"><select data-cs="${c.id}" aria-label="Course to assign"><option value="">Add a course...</option>${co.data.filter(x => !c.class_courses.some(y => y.course_id === x.id)).map(x => `<option value="${x.id}">${esc(x.title)}</option>`).join("")}</select><button class="btn" data-ac="${c.id}">Assign</button></div>
-     ${st.length ? `<div style="margin-top:10px">${st.map(s => `<span class="badge">${esc(s.profiles?.display_name)} (${esc(s.profiles?.username)})</span>`).join("")}</div>` : ""}</div>`; }).join("") || `<div class="card mute">No classes yet. Create your first one above.</div>`}</div>`;
-  $("main").onclick = async e => { const r = e.target.dataset.rot, a = e.target.dataset.ac;
-    if (r) { const { error } = await sb.rpc("rotate_class_code", { p_class: r }); if (error) return flash(error.message, true); tutorHome(); }
-    if (a) { const v = document.querySelector(`[data-cs="${a}"]`).value; if (!v) return; const { error } = await sb.from("class_courses").insert({ class_id: a, course_id: v }); if (error) return flash(error.message, true); tutorHome(); } };
+  const { data, error } = await sb.from("classes").select("id,name,grade_level,status,class_codes(code,is_active),class_memberships(student_id)").eq("tutor_id", me.id).order("created_at", { ascending: false });
+  if (error) return bad(error);
+  $("tl").outerHTML = `<div id="tl">${data.map(c => { const code = c.class_codes.find(k => k.is_active)?.code, n = c.class_memberships.length;
+    return `<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(c.name)}</b><div class="mute">${c.grade_level ? "Grade " + c.grade_level + " · " : ""}${n} learner${n === 1 ? "" : "s"}</div></div><div class="row">${code ? `<span class="code">${pretty(code)}</span>` : ""}<button class="btn p" data-open="${c.id}">Open class</button></div></div></div>`; }).join("") || `<div class="card mute">No classes yet. Create your first one above.</div>`}</div>`;
+  $("main").onclick = e => { const o = e.target.dataset.open; if (o) { view = "tclass"; ctx = o; renderApp(); } };
+}
+
+/* ---- tutor: manage one class ---- */
+const PRESETS = { web: ["html", "css", "js"], html: ["html"], css: ["css"], js: ["js"], htmlcss: ["html", "css"] };
+const presetOf = t => Object.entries(PRESETS).find(([, v]) => v.length === t.length && v.every(x => t.includes(x)))?.[0] || "web";
+async function tclassPage() {
+  const id = ctx; $("main").innerHTML = `<div class="mute">Loading...</div>`;
+  const [c, n, co, pj] = await Promise.all([
+    sb.from("classes").select("id,name,grade_level,workspace_tabs,workspace_html,announcement,class_codes(code,is_active),class_memberships(student_id,profiles(display_name,username)),class_courses(course_id)").eq("id", id).single(),
+    sb.from("class_notes").select("id,title,body,file_path,file_name,created_at").eq("class_id", id).order("created_at", { ascending: false }),
+    sb.from("courses").select("id,title").order("title"),
+    sb.from("coding_projects").select("id,name,files,updated_at,profiles(display_name)").eq("class_id", id).order("updated_at", { ascending: false })]);
+  const err = [c, n, co, pj].find(r => r.error); if (err) return bad(err.error);
+  const k = c.data, code = k.class_codes.find(x => x.is_active)?.code, pre = presetOf(k.workspace_tabs);
+  $("main").innerHTML = `<div style="margin-bottom:8px"><button class="btn" data-back="1">&larr; All classes</button></div>
+  <div class="row" style="justify-content:space-between"><div><h1>${esc(k.name)}</h1><div class="sub">${k.class_memberships.length} learner(s). Learners who join with the code land on this class.</div></div>
+  <div class="row">${code ? `<span class="code">${pretty(code)}</span>` : ""}<button class="btn" data-rot="1">New code</button></div></div>
+  <div id="note"></div>
+  <div class="cols"><div>
+   <div class="card"><h2>Class settings</h2>
+    <label class="f">Class name<input type="text" id="sn" value="${esc(k.name)}" maxlength="80"></label>
+    <label class="f">Coding space for learners<select id="sp"><option value="web">HTML, CSS and JavaScript</option><option value="htmlcss">HTML and CSS</option><option value="html">HTML only</option><option value="css">CSS only (they style a page you provide)</option><option value="js">JavaScript only</option></select></label>
+    <label class="f" id="shl">Page for learners to style (HTML)<textarea id="sh" style="height:120px" spellcheck="false">${esc(k.workspace_html)}</textarea></label>
+    <label class="f">Announcement for the class<textarea id="sa" style="height:80px;background:var(--card);color:var(--ink)" maxlength="2000">${esc(k.announcement)}</textarea></label>
+    <button class="btn p" id="ss">Save settings</button></div>
+   <div class="card"><h2>Notes and files</h2>
+    <label class="f">Title<input type="text" id="nt" maxlength="120"></label>
+    <label class="f">Note (optional)<textarea id="nb" style="height:90px;background:var(--card);color:var(--ink)" maxlength="20000"></textarea></label>
+    <label class="f">File (PDF, Word, PowerPoint, image or text, up to 10 MB)<input type="file" id="nf" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt"></label>
+    <button class="btn p" id="na">Add to class</button>
+    <div style="margin-top:12px">${n.data.map(x => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(x.title)}</b><small>${new Date(x.created_at).toLocaleDateString("en-GB")}${x.file_name ? " · " + esc(x.file_name) : ""}</small></div>${x.file_path ? `<button class="btn" data-f="${esc(x.file_path)}">Open</button>` : ""}<button class="btn" data-dn="${x.id}" data-fp="${esc(x.file_path || "")}">Delete</button></div>`).join("") || `<div class="mute">No notes yet.</div>`}</div></div>
+  </div><div>
+   <div class="card"><h2>Courses</h2><div class="row"><select id="cs" aria-label="Course to assign"><option value="">Add a course...</option>${co.data.filter(x => !k.class_courses.some(y => y.course_id === x.id)).map(x => `<option value="${x.id}">${esc(x.title)}</option>`).join("")}</select><button class="btn" id="ac">Assign</button></div>
+    <div style="margin-top:8px">${co.data.filter(x => k.class_courses.some(y => y.course_id === x.id)).map(x => `<span class="badge">${esc(x.title)}</span>`).join("")}</div></div>
+   <div class="card"><h2>Learners</h2>${k.class_memberships.map(s => `<div class="item"><div class="ic">${esc((s.profiles?.display_name || "?").slice(0, 2))}</div><div><b>${esc(s.profiles?.display_name)}</b><small>${esc(s.profiles?.username)}</small></div><button class="btn" data-rm="${s.student_id}">Remove</button></div>`).join("") || `<div class="mute">Nobody has joined yet. Share the code above.</div>`}</div>
+   <div class="card"><h2>Learner projects</h2>${pj.data.map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>${esc(p.profiles?.display_name)} · ${new Date(p.updated_at).toLocaleDateString("en-GB")}</small></div><button class="btn" data-pv="${p.id}">Preview</button></div>`).join("") || `<div class="mute">No projects saved in this class yet.</div>`}<div id="pvb"></div></div>
+  </div></div>`;
+  $("sp").value = pre; const syncHtml = () => { $("shl").hidden = PRESETS[$("sp").value].includes("html"); }; syncHtml(); $("sp").onchange = syncHtml;
+  const note = (t, ok) => { $("note").innerHTML = `<div class="msg ${ok ? "g" : "e"}">${esc(t)}</div>`; };
+  $("main").onclick = async e => { const d = e.target.dataset;
+    if (d.back) { view = "home"; ctx = null; return renderApp(); }
+    if (d.f) return download(d.f);
+    if (d.rot) { const { error } = await sb.rpc("rotate_class_code", { p_class: id }); return error ? note(error.message) : tclassPage(); }
+    if (d.rm && confirm("Remove this learner from the class?")) { const { error } = await sb.from("class_memberships").delete().eq("class_id", id).eq("student_id", d.rm); return error ? note(error.message) : tclassPage(); }
+    if (d.dn) { if (!confirm("Delete this note?")) return; if (d.fp) await sb.storage.from("class-notes").remove([d.fp]); const { error } = await sb.from("class_notes").delete().eq("id", d.dn); return error ? note(error.message) : tclassPage(); }
+    if (d.pv) { const p = pj.data.find(x => x.id === d.pv), f = p.files || {}; $("pvb").innerHTML = `<iframe sandbox="allow-scripts" title="Preview" style="height:220px;margin-top:10px"></iframe>`; $("pvb").firstChild.srcdoc = buildDoc(f.html ?? k.workspace_html, f.css, f.js); } };
+  $("ss").onclick = async () => { const tabs = PRESETS[$("sp").value];
+    const { error } = await sb.from("classes").update({ name: $("sn").value.trim() || k.name, workspace_tabs: tabs, workspace_html: tabs.includes("html") ? "" : $("sh").value, announcement: $("sa").value }).eq("id", id);
+    error ? note(error.message) : note("Settings saved. Learners see the change next time they open the class.", true); };
+  $("ac").onclick = async () => { const v = $("cs").value; if (!v) return; const { error } = await sb.from("class_courses").insert({ class_id: id, course_id: v }); error ? note(error.message) : tclassPage(); };
+  $("na").onclick = async () => { const title = $("nt").value.trim(), file = $("nf").files[0]; if (!title) return note("Give the note a title.");
+    if (file && file.size > 10485760) return note("That file is over 10 MB.");
+    $("na").disabled = true; let path = null;
+    if (file) { path = id + "/" + crypto.randomUUID() + "-" + file.name.replace(/[^A-Za-z0-9._-]/g, "_");
+      const up = await sb.storage.from("class-notes").upload(path, file, { contentType: file.type || undefined }); if (up.error) { $("na").disabled = false; return note(up.error.message); } }
+    const { error } = await sb.from("class_notes").insert({ class_id: id, title, body: $("nb").value, file_path: path, file_name: file ? file.name : null, created_by: me.id });
+    if (error) { $("na").disabled = false; return note(error.message); } tclassPage(); };
 }
 </script>
 </body>
