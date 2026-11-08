@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School ERP</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8e8f6;--panel:#f6f6fd;--card:#fff;--ink:#23232f;--mute:#7d7d90;--acc:#8b7fd6;--accd:#6d60c0;--soft:#ecebfa;--dark:#1d1d24;--line:#ececf5;--ok:#2e8b5e;--err:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#15151c;--panel:#1d1d27;--card:#262633;--ink:#ececf4;--mute:#a0a0b4;--acc:#a79df0;--accd:#a79df0;--soft:#34324d;--dark:#0e0e13;--line:#32323f;--ok:#5fcf97;--err:#ff8d8d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Outfit,system-ui,sans-serif;font-size:14px;padding:20px;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.app{display:grid;grid-template-columns:76px 1fr;gap:20px;max-width:1180px;margin:0 auto;background:var(--panel);border-radius:28px;padding:16px}
+nav{background:var(--dark);border-radius:30px;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:10px;position:sticky;top:20px;align-self:start;height:calc(100vh - 72px);min-height:440px}
+.logo{width:34px;height:34px;border-radius:12px;background:var(--acc);margin-bottom:22px}
+nav button{width:42px;height:42px;border:0;border-radius:14px;background:none;color:#9a9aa9;cursor:pointer;display:grid;place-items:center}
+nav button.on{background:#fff;color:var(--dark)}nav button:hover:not(.on){color:#fff}.sp{flex:1}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+main{min-width:0;padding:6px 0}h1{font-size:20px;font-weight:600;margin:4px 0 2px}.sub{color:var(--mute);font-size:12px;margin-bottom:16px}
+h2{font-size:14px;font-weight:600;margin:0 0 12px}
+.cols{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.card{background:var(--card);border-radius:24px;padding:18px;box-shadow:0 6px 18px rgba(120,110,180,.08);margin-bottom:14px}
+.stat{padding:16px;margin:0}.stat b{display:block;font-size:22px;font-weight:600}.stat span{font-size:12px;color:var(--mute)}
+.bar{height:7px;background:var(--soft);border-radius:9px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--acc)}
+.item{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}.item:first-of-type{border-top:0}
+.ic{width:38px;height:38px;border-radius:12px;background:var(--soft);color:var(--acc);display:grid;place-items:center;flex:none;font-weight:600;font-size:12px}
+.item>div:not(.ic){flex:1;min-width:0}small,.mute{color:var(--mute);font-size:12px}.item small{display:block;margin-top:2px}
+.btn{border:0;border-radius:10px;background:var(--soft);color:var(--accd);padding:8px 14px;font-size:12px;cursor:pointer}.btn:hover{background:var(--acc);color:#fff}
+.btn.p{background:var(--acc);color:#fff}.btn.p:hover{background:var(--accd)}.btn:disabled{opacity:.5;cursor:wait}
+input[type=text],input[type=password],input[type=email],select{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;width:100%}
+label.f{display:block;margin-bottom:10px;font-size:12px;color:var(--mute)}label.f input,label.f select{margin-top:4px;color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>input,.row>select{flex:1;min-width:130px;width:auto}
+.msg{font-size:13px;margin:8px 0;min-height:18px}.msg.e{color:var(--err)}.msg.g{color:var(--ok)}
+.badge{display:inline-block;background:var(--soft);border-radius:12px;padding:7px 11px;margin:0 6px 6px 0;font-size:12px}
+.code{font:600 18px ui-monospace,Menlo,monospace;letter-spacing:2px;background:var(--soft);border-radius:10px;padding:6px 10px;display:inline-block}
+.tabs{display:flex;gap:4px;margin-bottom:10px}.tabs button{border:0;background:var(--soft);color:var(--mute);padding:7px 12px;border-radius:10px;font-size:12px;cursor:pointer}.tabs button.on{background:var(--dark);color:#fff}
+.lessons label{display:flex;gap:8px;padding:7px 0;cursor:pointer}
+.ws{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+textarea{width:100%;height:300px;resize:vertical;border:1px solid var(--line);border-radius:14px;background:#1d1d24;color:#e8e8f2;padding:12px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;tab-size:2}
+iframe{width:100%;height:300px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.con{background:#1d1d24;color:#cfcfe0;border-radius:14px;padding:10px 12px;font:12px/1.5 ui-monospace,Menlo,monospace;height:90px;overflow:auto;margin-top:8px;white-space:pre-wrap}.con .er{color:#ff8d8d}
+.auth{max-width:440px;margin:6vh auto;background:var(--panel);border-radius:28px;padding:28px}
+.auth .logo{margin:0 0 14px}
+@media(max-width:1020px){.cols{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){body{padding:8px}.app{grid-template-columns:1fr;padding:10px;border-radius:22px}nav{flex-direction:row;height:auto;min-height:0;position:static;border-radius:20px;padding:8px;justify-content:space-around}.logo,.sp{display:none}.ws{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ---- settings ---- */
+const SB_URL = "https://qtbzxvmgassoooueaius.supabase.co";
+const SB_KEY = "sb_publishable_ln3tdQcVwLVg81VrB2sk3A_CHhY5GGQ";   // publishable key: safe in web pages
+const EMAIL_DOMAIN = "erp.local";                                  // usernames become username@erp.local
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const mail = u => u.trim().toLowerCase() + "@" + EMAIL_DOMAIN;
+const pretty = c => c ? c.slice(0, 4) + "-" + c.slice(4) : "";
+const ic = p => `<svg class="i" viewBox="0 0 24 24"><path d="${p}"/></svg>`;
+const ICON = { home: "M3 11l9-7 9 7v9H3zM9 20v-6h6v6", book: "M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11", code: "m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14", join: "M9 8a3 3 0 1 0 0 .1M3 19c0-3 3-5 6-5s6 2 6 5M18 8v6M15 11h6", out: "M9 4H5v16h4M16 8l4 4-4 4M20 12H9", cls: "M3 5h18v14H3zM3 10h18" };
+const niceErr = e => {
+  const m = e?.message || String(e);
+  if (/invalid login/i.test(m)) return "Wrong username or password.";
+  if (/already registered/i.test(m)) return "That username is already taken.";
+  if (/rate limit/i.test(m)) return "Too many tries. Wait a minute and try again.";
+  if (/invalid/i.test(m) && /email/i.test(m)) return "Supabase rejected the hidden email address. See the note in the setup guide (EMAIL_DOMAIN).";
+  return m;
+};
+
+let me = null, view = "home", tab = "in", notice = "", busy = false;
+
+/* ---- start ---- */
+sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { me = null; renderAuth(); } });
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) await enter(); else renderAuth();
+})();
+
+async function enter() {
+  const { data: { user } } = await sb.auth.getUser();
+  const { data: p } = user ? await sb.from("profiles").select("id,username,role,display_name,is_active").eq("id", user.id).maybeSingle() : { data: null };
+  if (!p || !p.is_active) { await sb.auth.signOut(); notice = "This account is not active. Contact your school or tutor."; return renderAuth(); }
+  me = p; view = "home"; renderApp();
+}
+
+/* ---- sign in / sign up / join ---- */
+function renderAuth() {
+  $("root").innerHTML = `<div class="auth"><div class="logo"></div>
+  <h1>School ERP</h1><div class="sub">Learn to code with your class.</div>
+  <div class="tabs" id="tabs"><button data-t="in" class="${tab === "in" ? "on" : ""}">Sign in</button><button data-t="join" class="${tab === "join" ? "on" : ""}">Join a class</button><button data-t="new" class="${tab === "new" ? "on" : ""}">New account</button></div>
+  <form id="af" autocomplete="on">
+   ${tab === "join" ? `<label class="f">Class code<input type="text" id="code" placeholder="K7QM-3XPD" maxlength="12" required></label>` : ""}
+   <label class="f">Username<input type="text" id="u" autocomplete="username" required minlength="3" maxlength="30"></label>
+   <label class="f">Password<input type="password" id="p" autocomplete="${tab === "in" ? "current-password" : "new-password"}" required minlength="8"></label>
+   ${tab !== "in" ? `<label class="f">Your name<input type="text" id="dn" maxlength="60"></label><label class="f">Email (optional)<input type="email" id="em"></label>` : ""}
+   ${tab === "new" ? `<label class="f">I am a<select id="role"><option value="learner">Learner</option><option value="tutor">Tutor</option><option value="family">Parent or guardian</option></select></label>` : ""}
+   <div class="msg ${notice ? "e" : ""}" id="am" role="alert">${esc(notice)}</div>
+   <button class="btn p" style="width:100%;padding:11px" id="ab">${{ in: "Sign in", join: "Join class", new: "Create account" }[tab]}</button>
+  </form>
+  ${tab === "join" ? `<div class="sub" style="margin-top:12px">New here? Pick a username and password and we create your account. Already have one? Use it.</div>` : ""}</div>`;
+  notice = "";
+  $("tabs").onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; renderAuth(); } };
+  $("af").onsubmit = onAuth;
+}
+const say = (t, ok) => { const m = $("am"); if (m) { m.className = "msg " + (ok ? "g" : "e"); m.textContent = t; } };
+
+async function onAuth(e) {
+  e.preventDefault();
+  const u = $("u").value.trim(), p = $("p").value;
+  if (!/^[A-Za-z0-9_.-]{3,30}$/.test(u)) return say("Username: 3 to 30 letters, numbers, dots, dashes or underscores.");
+  $("ab").disabled = true;
+  try {
+    const meta = r => ({ username: u.toLowerCase(), role: r, display_name: ($("dn")?.value.trim()) || u, contact_email: $("em")?.value.trim() || "" });
+    let joinNote = "";
+    if (tab === "in") {
+      const { error } = await sb.auth.signInWithPassword({ email: mail(u), password: p });
+      if (error) throw error;
+    } else if (tab === "new") {
+      const { data, error } = await sb.auth.signUp({ email: mail(u), password: p, options: { data: meta($("role").value) } });
+      if (error) throw error;
+      if (!data.session) throw new Error("Sign-up worked but you were not signed in. In Supabase, turn off Confirm email (Authentication > Providers > Email).");
+    } else {
+      let r = await sb.auth.signInWithPassword({ email: mail(u), password: p });
+      if (r.error) {
+        const su = await sb.auth.signUp({ email: mail(u), password: p, options: { data: meta("learner") } });
+        if (su.error) throw new Error(/already registered/i.test(su.error.message) ? "That username is taken, or the password is wrong." : su.error.message);
+        if (!su.data.session) throw new Error("Account created but not signed in. Turn off Confirm email in Supabase Auth settings.");
+      }
+      const { error } = await sb.rpc("join_class", { p_code: $("code").value });
+      if (error) joinNote = "You are signed in, but the class code did not work: " + error.message;
+    }
+    await enter();
+    if (joinNote) flash(joinNote, true);
+  } catch (err) { say(niceErr(err)); const b = $("ab"); if (b) b.disabled = false; }
+}
+
+/* ---- shell ---- */
+function renderApp() {
+  const learner = me.role === "learner", tutor = me.role === "tutor";
+  const items = learner ? [["home", "Home", ICON.home], ["courses", "My courses", ICON.book], ["work", "Coding workspace", ICON.code], ["join", "Join a class", ICON.join]]
+    : tutor ? [["home", "My classes", ICON.cls]] : [["home", "Home", ICON.home]];
+  $("root").innerHTML = `<div class="app"><nav aria-label="Menu"><div class="logo"></div>
+   ${items.map(([v, t, p]) => `<button data-v="${v}" class="${v === view ? "on" : ""}" title="${t}" aria-label="${t}">${ic(p)}</button>`).join("")}
+   <div class="sp"></div><button id="so" title="Sign out" aria-label="Sign out">${ic(ICON.out)}</button></nav><main id="main"></main></div>`;
+  document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut(); view = b.dataset.v; renderApp(); };
+  if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL }[view])();
+  else if (tutor) tutorHome();
+  else $("main").innerHTML = `<h1>Hello, ${esc(me.display_name)}</h1><div class="sub">The ${esc(me.role)} dashboard is not built yet. It is coming after the student and tutor pages.</div>`;
+}
+function flash(t, err) { const m = $("main"); if (!m) return; const d = document.createElement("div"); d.className = "msg " + (err ? "e" : "g"); d.textContent = t; m.prepend(d); }
+const bad = (err, where) => { console.error(err); (where || $("main")).insertAdjacentHTML("afterbegin", `<div class="msg e">${esc(err.message || err)}</div>`); };
+
+/* ---- learner: home ---- */
+async function homeL() {
+  $("main").innerHTML = `<h1>Hi, ${esc(me.display_name)}! Ready to code?</h1><div class="sub">${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div><div id="hb" class="mute">Loading...</div>`;
+  const uid = me.id;
+  const [cl, cc, pr, asg, sub, ach, pj] = await Promise.all([
+    sb.from("class_memberships").select("classes(id,name,schools(name),profiles(display_name))").eq("student_id", uid),
+    sb.from("class_courses").select("courses(id,title,language,lessons(id))"),
+    sb.from("progress_records").select("lesson_id").eq("student_id", uid),
+    sb.from("assignments").select("id,title,due_at,classes(name)").order("due_at", { nullsFirst: false }),
+    sb.from("submissions").select("assignment_id").eq("student_id", uid),
+    sb.from("user_achievements").select("achievements(title)").eq("user_id", uid),
+    sb.from("coding_projects").select("id,name,updated_at").eq("owner_id", uid).order("updated_at", { ascending: false }),
+  ]);
+  const err = [cl, cc, pr, asg, sub, ach, pj].find(r => r.error); if (err) return bad(err.error);
+  const done = new Set(pr.data.map(x => x.lesson_id));
+  const courses = [...new Map(cc.data.map(x => x.courses).filter(Boolean).map(c => [c.id, c])).values()];
+  const submitted = new Set(sub.data.map(x => x.assignment_id)), pending = asg.data.filter(a => !submitted.has(a.id));
+  const stat = (n, l, p) => `<div class="card stat"><div class="ic" style="margin-bottom:12px">${ic(p)}</div><b>${n}</b><span>${l}</span></div>`;
+  $("hb").outerHTML = `<div class="stats">${stat(cl.data.length, "My classes", ICON.cls)}${stat(courses.length, "Courses", ICON.book)}${stat(pj.data.length, "Projects saved", ICON.code)}${stat(ach.data.length, "Badges", "M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.5 7.1 18.2l.9-5.5-4-3.9 5.5-.8z")}</div>
+  <div class="cols"><div>
+   <div class="card"><h2>Continue learning</h2>${courses.length ? courses.map(c => { const n = c.lessons.length, d = c.lessons.filter(l => done.has(l.id)).length, pc = n ? Math.round(100 * d / n) : 0;
+      return `<div class="item"><div class="ic">${esc(c.title.slice(0, 2))}</div><div><b>${esc(c.title)}</b><small>${d} of ${n} lessons</small><div class="bar"><i style="width:${pc}%"></i></div></div><button class="btn" data-go="courses">Continue</button></div>`; }).join("") : `<div class="mute">No courses yet. Your tutor will add courses to your class.</div>`}</div>
+   <div class="card"><h2>Pending assignments</h2>${pending.length ? pending.map(a => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(a.title)}</b><small>${esc(a.classes?.name)} · ${a.due_at ? "Due " + new Date(a.due_at).toLocaleDateString("en-GB") : "No deadline"}</small></div></div>`).join("") : `<div class="mute">Nothing due. Nice.</div>`}</div>
+  </div><div>
+   <div class="card"><h2>My classes</h2>${cl.data.length ? cl.data.map(m => `<div class="item"><div class="ic">${esc((m.classes?.name || "?").slice(0, 2))}</div><div><b>${esc(m.classes?.name)}</b><small>Tutor ${esc(m.classes?.profiles?.display_name)}${m.classes?.schools ? " · " + esc(m.classes.schools.name) : ""}</small></div></div>`).join("") : `<div class="mute">You have not joined a class yet.</div><div style="margin-top:10px"><button class="btn p" data-go="join">Join a class</button></div>`}</div>
+   <div class="card"><h2>Achievements</h2>${ach.data.length ? ach.data.map(a => `<span class="badge">${esc(a.achievements?.title)}</span>`).join("") : `<div class="mute">Finish a lesson or save a project to earn your first badge.</div>`}</div>
+   <div class="card"><h2>Recent projects</h2>${pj.data.slice(0, 4).map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>${new Date(p.updated_at).toLocaleString("en-GB")}</small></div></div>`).join("") || `<div class="mute">No projects yet.</div>`}</div>
+  </div></div>`;
+  $("main").onclick = e => { const g = e.target.dataset.go; if (g) { view = g; renderApp(); } };
+}
+
+/* ---- learner: courses ---- */
+async function coursesL() {
+  $("main").innerHTML = `<h1>My courses</h1><div class="sub">Tick a lesson when you finish it. Your progress is saved.</div><div id="cl" class="mute">Loading...</div>`;
+  const [cc, pr] = await Promise.all([
+    sb.from("class_courses").select("courses(id,title,description,language,lessons(id,position,title,body))"),
+    sb.from("progress_records").select("lesson_id").eq("student_id", me.id)]);
+  if (cc.error || pr.error) return bad(cc.error || pr.error);
+  const done = new Set(pr.data.map(x => x.lesson_id));
+  const courses = [...new Map(cc.data.map(x => x.courses).filter(Boolean).map(c => [c.id, c])).values()];
+  $("cl").outerHTML = `<div id="cl">${courses.length ? courses.map(c => { c.lessons.sort((a, b) => a.position - b.position); const n = c.lessons.length, d = c.lessons.filter(l => done.has(l.id)).length;
+    return `<div class="card"><div class="item" style="border:0;padding:0"><div class="ic">${esc(c.title.slice(0, 2))}</div><div><b>${esc(c.title)}</b><small>${esc(c.language)} · ${n ? Math.round(100 * d / n) : 0}% complete</small><div class="bar"><i style="width:${n ? 100 * d / n : 0}%"></i></div></div><button class="btn" data-open="${c.id}">Lessons</button></div>
+    <div class="lessons" id="L${c.id}" hidden>${c.lessons.map(l => `<label><input type="checkbox" data-l="${l.id}" ${done.has(l.id) ? "checked" : ""}>${esc(l.title)}</label>`).join("")}</div></div>`; }).join("") : `<div class="card mute">No courses yet. Join a class and your tutor will add courses.</div>`}</div>`;
+  $("main").onclick = async e => { const o = e.target.dataset.open; if (o) { const L = $("L" + o); L.hidden = !L.hidden; } };
+  $("main").onchange = async e => { const l = e.target.dataset.l; if (!l) return;
+    const r = e.target.checked ? await sb.from("progress_records").insert({ student_id: me.id, lesson_id: l }) : await sb.from("progress_records").delete().eq("student_id", me.id).eq("lesson_id", l);
+    if (r.error) { e.target.checked = !e.target.checked; flash(r.error.message, true); } else { const open = [...document.querySelectorAll(".lessons:not([hidden])")].map(x => x.id); await coursesL(); open.forEach(id => { const x = $(id); if (x) x.hidden = false; }); } };
+}
+
+/* ---- learner: join ---- */
+function joinL() {
+  $("main").innerHTML = `<h1>Join a class</h1><div class="sub">Ask your tutor for the class code.</div>
+  <div class="card" style="max-width:480px"><div class="row"><input type="text" id="jc" placeholder="Class code, like K7QM-3XPD" maxlength="12" aria-label="Class code"><button class="btn p" id="jb">Join class</button></div><div class="msg" id="jm" role="alert"></div></div>`;
+  $("jb").onclick = async () => { const m = $("jm"); $("jb").disabled = true;
+    const { data, error } = await sb.rpc("join_class", { p_code: $("jc").value });
+    $("jb").disabled = false;
+    if (error) { m.className = "msg e"; m.textContent = error.message; } else { m.className = "msg g"; m.textContent = "You joined " + data.name + "."; $("jc").value = ""; } };
+}
+
+/* ---- learner: coding workspace ---- */
+const STARTER = { html: '<h1>Hello!</h1>\n<button id="b">Click me</button>', css: "body{font-family:sans-serif;text-align:center;padding:30px}\nbutton{padding:10px 18px;font-size:16px}", js: 'document.getElementById("b").onclick=function(){\n  document.body.style.background="#ecebfa";\n  console.log("Button clicked");\n};' };
+let W = { id: null, name: "My first project", files: { ...STARTER }, tab: "html", timer: null };
+async function workL() {
+  $("main").innerHTML = `<h1>Coding workspace</h1><div class="sub">Your work saves automatically once you have saved it once.</div>
+  <div class="card"><div class="row" style="margin-bottom:10px"><input type="text" id="pn" aria-label="Project name" placeholder="Project name" maxlength="80"><button class="btn p" id="run">Run</button><button class="btn" id="sv">Save</button><button class="btn" id="rs">Reset</button><button class="btn" id="np">New project</button></div>
+  <div class="ws"><div><div class="tabs" id="tb"><button data-t="html">HTML</button><button data-t="css">CSS</button><button data-t="js">JavaScript</button></div><textarea id="ed" spellcheck="false" aria-label="Code editor"></textarea></div>
+  <div><div class="tabs"><button class="on" style="cursor:default">Live preview</button></div><iframe id="fr" sandbox="allow-scripts" title="Preview"></iframe></div></div>
+  <div class="con" id="con" aria-live="polite">Console output appears here.</div><div class="msg" id="wm"></div></div>
+  <div class="card"><h2>My projects</h2><div id="pl" class="mute">Loading...</div></div>`;
+  $("pn").value = W.name; $("ed").value = W.files[W.tab]; markTab();
+  $("tb").onclick = e => { const t = e.target.dataset.t; if (t) { W.tab = t; $("ed").value = W.files[t]; markTab(); } };
+  $("ed").oninput = e => { W.files[W.tab] = e.target.value; clearTimeout(W.timer); W.timer = setTimeout(() => { runCode(); if (W.id) save(true); }, 1200); };
+  $("run").onclick = runCode; $("sv").onclick = () => save(false);
+  $("rs").onclick = () => { W.files = { ...STARTER }; $("ed").value = W.files[W.tab]; runCode(); };
+  $("np").onclick = () => { W = { id: null, name: "", files: { html: "", css: "", js: "" }, tab: "html", timer: null }; $("pn").value = ""; $("ed").value = ""; markTab(); runCode(); };
+  $("pl").onclick = async e => { const o = e.target.dataset.o, x = e.target.dataset.x;
+    if (o) { const { data, error } = await sb.from("coding_projects").select("*").eq("id", o).single(); if (error) return flash(error.message, true);
+      W = { id: data.id, name: data.name, files: { html: "", css: "", js: "", ...data.files }, tab: "html", timer: null }; $("pn").value = W.name; $("ed").value = W.files.html; markTab(); runCode(); }
+    if (x && confirm("Delete this project?")) { const { error } = await sb.from("coding_projects").delete().eq("id", x); if (error) return flash(error.message, true); if (W.id === x) W.id = null; listProjects(); } };
+  runCode(); listProjects();
+}
+const markTab = () => [...$("tb").children].forEach(b => b.classList.toggle("on", b.dataset.t === W.tab));
+function runCode() {
+  const f = W.files; $("con").textContent = "";
+  $("fr").srcdoc = `<style>${f.css}</style>${f.html}<script>["log","error","warn"].forEach(function(k){console[k]=function(){parent.postMessage({k:k,m:[].slice.call(arguments).join(" ")},"*")}});window.onerror=function(m){parent.postMessage({k:"error",m:String(m)},"*")};<\/script><script>${f.js}<\/script>`;
+}
+addEventListener("message", e => { const fr = $("fr"); if (!fr || e.source !== fr.contentWindow || !e.data) return; const d = document.createElement("div"); if (e.data.k === "error") d.className = "er"; d.textContent = String(e.data.m); $("con").appendChild(d); });
+async function save(auto) {
+  const name = $("pn").value.trim() || "Untitled project"; W.name = name; let r;
+  if (W.id) { r = await sb.from("coding_projects").update({ name, files: W.files, updated_at: new Date().toISOString() }).eq("id", W.id);
+    if (!r.error && !auto) await sb.from("project_versions").insert({ project_id: W.id, files: W.files }); }
+  else { r = await sb.from("coding_projects").insert({ owner_id: me.id, name, files: W.files }).select("id").single(); if (!r.error) W.id = r.data.id; }
+  const m = $("wm"); if (!m) return;
+  if (r.error) { m.className = "msg e"; m.textContent = r.error.message; } else { m.className = "msg g"; m.textContent = (auto ? "Autosaved " : "Saved ") + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); listProjects(); }
+}
+async function listProjects() {
+  const { data, error } = await sb.from("coding_projects").select("id,name,updated_at").eq("owner_id", me.id).order("updated_at", { ascending: false });
+  const box = $("pl"); if (!box) return; if (error) return (box.textContent = error.message);
+  box.className = ""; box.innerHTML = data.length ? data.map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>Saved ${new Date(p.updated_at).toLocaleString("en-GB")}</small></div><button class="btn" data-o="${p.id}">Open</button><button class="btn" data-x="${p.id}">Delete</button></div>`).join("") : `<div class="mute">No saved projects yet. Write some code and select Save.</div>`;
+}
+
+/* ---- tutor: classes (minimal, so you can test joining end to end) ---- */
+async function tutorHome() {
+  $("main").innerHTML = `<h1>My classes</h1><div class="sub">Create a class, share its code, and give it a course.</div>
+  <div class="card" style="max-width:560px"><h2>New class</h2><div class="row"><input type="text" id="cn" placeholder="Class name, like Grade 6 Python" maxlength="80" aria-label="Class name"><select id="cg" aria-label="Grade"><option value="">Grade</option>${[1,2,3,4,5,6,7,8,9,10,11,12].map(g => `<option>${g}</option>`).join("")}</select><button class="btn p" id="mk">Create</button></div><div class="msg" id="tm" role="alert"></div></div><div id="tl" class="mute">Loading...</div>`;
+  $("mk").onclick = async () => { const { error } = await sb.rpc("create_class", { p_name: $("cn").value, p_grade: $("cg").value ? +$("cg").value : null }); const m = $("tm");
+    if (error) { m.className = "msg e"; m.textContent = error.message; } else tutorHome(); };
+  const [cl, co] = await Promise.all([
+    sb.from("classes").select("id,name,grade_level,status,class_codes(code,is_active),class_memberships(student_id,profiles(display_name,username)),class_courses(course_id)").eq("tutor_id", me.id).order("created_at", { ascending: false }),
+    sb.from("courses").select("id,title").order("title")]);
+  if (cl.error || co.error) return bad(cl.error || co.error);
+  $("tl").outerHTML = `<div id="tl">${cl.data.map(c => { const code = c.class_codes.find(k => k.is_active)?.code, st = c.class_memberships;
+    return `<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(c.name)}</b><div class="mute">${c.grade_level ? "Grade " + c.grade_level + " · " : ""}${st.length} learner${st.length === 1 ? "" : "s"}</div></div>
+     <div>${code ? `<span class="code">${pretty(code)}</span>` : ""} <button class="btn" data-rot="${c.id}">New code</button></div></div>
+     <div class="row" style="margin-top:12px"><select data-cs="${c.id}" aria-label="Course to assign"><option value="">Add a course...</option>${co.data.filter(x => !c.class_courses.some(y => y.course_id === x.id)).map(x => `<option value="${x.id}">${esc(x.title)}</option>`).join("")}</select><button class="btn" data-ac="${c.id}">Assign</button></div>
+     ${st.length ? `<div style="margin-top:10px">${st.map(s => `<span class="badge">${esc(s.profiles?.display_name)} (${esc(s.profiles?.username)})</span>`).join("")}</div>` : ""}</div>`; }).join("") || `<div class="card mute">No classes yet. Create your first one above.</div>`}</div>`;
+  $("main").onclick = async e => { const r = e.target.dataset.rot, a = e.target.dataset.ac;
+    if (r) { const { error } = await sb.rpc("rotate_class_code", { p_class: r }); if (error) return flash(error.message, true); tutorHome(); }
+    if (a) { const v = document.querySelector(`[data-cs="${a}"]`).value; if (!v) return; const { error } = await sb.from("class_courses").insert({ class_id: a, course_id: v }); if (error) return flash(error.message, true); tutorHome(); } };
+}
+</script>
+</body>
+</html>
