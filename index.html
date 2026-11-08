@@ -161,7 +161,7 @@ async function homeL() {
   $("main").innerHTML = `<h1>Hi, ${esc(me.display_name)}! Ready to code?</h1><div class="sub">${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div><div id="hb" class="mute">Loading...</div>`;
   const uid = me.id;
   const [cl, cc, pr, asg, sub, ach, pj] = await Promise.all([
-    sb.from("class_memberships").select("classes(id,name,schools(name),profiles(display_name))").eq("student_id", uid),
+    sb.from("class_memberships").select("classes(id,name,schools(name),profiles!classes_tutor_id_fkey(display_name))").eq("student_id", uid),
     sb.from("class_courses").select("courses(id,title,language,lessons(id))"),
     sb.from("progress_records").select("lesson_id").eq("student_id", uid),
     sb.from("assignments").select("id,title,due_at,classes(name)").order("due_at", { nullsFirst: false }),
