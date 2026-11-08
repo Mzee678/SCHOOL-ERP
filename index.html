@@ -55,6 +55,7 @@ iframe{width:100%;height:300px;border:1px solid var(--line);border-radius:14px;b
 /* ---- settings ---- */
 const SB_URL = "https://qtbzxvmgassoooueaius.supabase.co";
 const SB_KEY = "sb_publishable_ln3tdQcVwLVg81VrB2sk3A_CHhY5GGQ";   // publishable key: safe in web pages
+const ACCOUNTS_FN = "swift-task";                                  // the function's URL name in Supabase > Edge Functions
 const EMAIL_DOMAIN = "erp.local";                                  // usernames become username@erp.local
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
@@ -218,7 +219,7 @@ function joinL() {
 /* ---- school and admin: accounts ---- */
 async function callAccounts(body) {
   const { data: { session } } = await sb.auth.getSession();
-  const r = await fetch(SB_URL + "/functions/v1/manage-accounts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: SB_KEY }, body: JSON.stringify(body) });
+  const r = await fetch(SB_URL + "/functions/v1/" + ACCOUNTS_FN, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: SB_KEY }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "The account service did not answer. Is the manage-accounts function deployed?" }));
   if (!r.ok) throw new Error(j.error || "Request failed"); return j;
 }
