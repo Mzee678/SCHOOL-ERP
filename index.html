@@ -3,20 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>School ERP</title>
+<title>BRAINSPARK</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("bs-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}catch(e){document.documentElement.dataset.theme="light"}</script>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#e8e8f6;--panel:#f6f6fd;--card:#fff;--ink:#23232f;--mute:#7d7d90;--acc:#8b7fd6;--accd:#6d60c0;--soft:#ecebfa;--dark:#1d1d24;--line:#ececf5;--ok:#2e8b5e;--err:#c0392b}
-@media (prefers-color-scheme:dark){:root{--bg:#15151c;--panel:#1d1d27;--card:#262633;--ink:#ececf4;--mute:#a0a0b4;--acc:#a79df0;--accd:#a79df0;--soft:#34324d;--dark:#0e0e13;--line:#32323f;--ok:#5fcf97;--err:#ff8d8d}}
+:root{--bg:#e8e8f6;--panel:#f6f6fd;--card:#fff;--ink:#23232f;--mute:#6e6e82;--acc:#8b7fd6;--accd:#6d60c0;--soft:#ecebfa;--dark:#1d1d24;--line:#ececf5;--ok:#2e8b5e;--err:#c0392b;color-scheme:light}
+:root[data-theme="dark"]{--bg:#15151c;--panel:#1d1d27;--card:#262633;--ink:#ececf4;--mute:#a0a0b4;--acc:#a79df0;--accd:#a79df0;--soft:#34324d;--dark:#0e0e13;--line:#32323f;--ok:#5fcf97;--err:#ff8d8d;color-scheme:dark}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Outfit,system-ui,sans-serif;font-size:14px;padding:20px;min-height:100vh}
 button,input,select,textarea{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .app{display:grid;grid-template-columns:76px 1fr;gap:20px;max-width:1180px;margin:0 auto;background:var(--panel);border-radius:28px;padding:16px}
-nav{background:var(--dark);border-radius:30px;display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:10px;position:sticky;top:20px;align-self:start;height:calc(100vh - 72px);min-height:440px}
-.logo{width:34px;height:34px;border-radius:12px;background:var(--acc);margin-bottom:22px}
-nav button{width:42px;height:42px;border:0;border-radius:14px;background:none;color:#9a9aa9;cursor:pointer;display:grid;place-items:center}
-nav button.on{background:#fff;color:var(--dark)}nav button:hover:not(.on){color:#fff}.sp{flex:1}
+.app.wide{grid-template-columns:224px 1fr}
+nav{background:var(--dark);border-radius:30px;display:flex;flex-direction:column;align-items:stretch;padding:18px 12px;gap:8px;position:sticky;top:20px;align-self:start;height:calc(100vh - 72px);min-height:460px}
+.logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#b59cf5,#6d60c0);display:inline-grid;place-items:center;color:#fff;flex:none}
+.logo svg{width:18px;height:18px;fill:currentColor;stroke:none}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;margin:0 0 20px;justify-content:center}
+.brand .bn{font-weight:600;letter-spacing:1.5px;font-size:15px;display:none}
+.app.wide .brand{justify-content:flex-start;padding-left:4px}.app.wide .brand .bn{display:inline}
+nav button{width:100%;height:42px;border:0;border-radius:14px;background:none;color:#a4a4b3;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;padding:0}
+.app.wide nav button{justify-content:flex-start;padding:0 11px}
+nav .tx{display:none;font-size:13px;white-space:nowrap}.app.wide nav .tx{display:inline}
+nav button.on{background:#fff;color:#1d1d24}nav button:hover:not(.on){color:#fff;background:rgba(255,255,255,.08)}.sp{flex:1}
+#tg svg{transition:transform .2s}.app:not(.wide) #tg svg{transform:rotate(180deg)}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 main{min-width:0;padding:6px 0}h1{font-size:20px;font-weight:600;margin:4px 0 2px}.sub{color:var(--mute);font-size:12px;margin-bottom:16px}
 h2{font-size:14px;font-weight:600;margin:0 0 12px}
@@ -45,7 +54,45 @@ iframe{width:100%;height:300px;border:1px solid var(--line);border-radius:14px;b
 .auth{max-width:440px;margin:6vh auto;background:var(--panel);border-radius:28px;padding:28px}
 .auth .logo{margin:0 0 14px}
 @media(max-width:1020px){.cols{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:700px){body{padding:8px}.app{grid-template-columns:1fr;padding:10px;border-radius:22px}nav{flex-direction:row;height:auto;min-height:0;position:static;border-radius:20px;padding:8px;justify-content:space-around}.logo,.sp{display:none}.ws{grid-template-columns:1fr}}
+@media(max-width:700px){body{padding:8px}.app,.app.wide{grid-template-columns:1fr;padding:10px;border-radius:22px}nav{flex-direction:row;height:auto;min-height:0;position:static;border-radius:20px;padding:8px;justify-content:space-around}.brand,.sp,#tg{display:none}nav button,.app.wide nav button{width:42px;justify-content:center;padding:0}nav .tx,.app.wide nav .tx{display:none}.ws{grid-template-columns:1fr}}
+:root{--nm-hi:#fff;--nm-lo:#c8cdd9;--lgbg:#eceff4}
+:root[data-theme="dark"]{--nm-hi:#2b2b3a;--nm-lo:#111118;--lgbg:#1d1d27}
+.login{display:grid;grid-template-columns:1fr 1fr;max-width:1000px;min-height:min(620px,calc(100vh - 40px));margin:0 auto;border-radius:30px;overflow:hidden;background:var(--lgbg);box-shadow:0 24px 60px rgba(40,30,110,.22)}
+.hero{background:#1b1360;border-radius:0 46px 46px 0;display:flex;align-items:flex-end;overflow:hidden}
+.hero svg{width:100%;height:100%;display:block}
+.formside{position:relative;display:flex;align-items:center;justify-content:center;padding:40px 28px}
+.formbox{width:100%;max-width:320px;text-align:center}
+.wm{font-size:28px;font-weight:600;letter-spacing:2.5px}.wm b{color:#ff7a59;font-weight:600}
+.formbox h1{font-size:17px;font-weight:400;margin:2px 0 28px}
+.fld{display:block;text-align:left;margin-bottom:16px}.lb{display:block;font-size:11px;font-weight:500;letter-spacing:.7px;text-transform:uppercase;margin:0 0 7px 6px}
+.nm{width:100%;border:0;border-radius:14px;padding:13px 16px;background:var(--lgbg);color:var(--ink);box-shadow:inset 4px 4px 9px var(--nm-lo),inset -4px -4px 9px var(--nm-hi)}
+.pw{position:relative;display:block}.pw .nm{padding-right:58px}
+.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--accd);font-size:12px;cursor:pointer;padding:6px 8px}
+.flink{display:block;margin:-6px 4px 14px auto;border:0;background:none;color:var(--accd);font-size:12px;cursor:pointer}
+.go{width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;background:var(--lgbg);color:var(--ink);box-shadow:6px 6px 14px var(--nm-lo),-6px -6px 14px var(--nm-hi)}
+.go:hover{color:var(--accd)}.go:active{box-shadow:inset 4px 4px 9px var(--nm-lo),inset -4px -4px 9px var(--nm-hi)}.go:disabled{opacity:.6}
+.alt{margin-top:18px}.alt button{border:0;background:none;color:var(--accd);cursor:pointer;font-size:12px}
+.formbox .msg{text-align:center;min-height:20px;margin:0 0 8px}
+.tbtn{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:12px;border:0;background:var(--lgbg);color:var(--accd);cursor:pointer;display:grid;place-items:center;box-shadow:3px 3px 8px var(--nm-lo),-3px -3px 8px var(--nm-hi)}
+@media(max-width:820px){.login{grid-template-columns:1fr;min-height:0}.hero{border-radius:0 0 40px 40px;height:230px;justify-content:center}.hero svg{width:auto;height:230px}.formside{padding:28px 20px 36px}}
+:root{--bg:#dfe3ea;--panel:#eceff4;--card:#eceff4;--soft:#e2e6ee;--line:rgba(130,138,160,.22);--nmr:7px 7px 16px var(--nm-lo),-7px -7px 16px var(--nm-hi);--nms:4px 4px 9px var(--nm-lo),-4px -4px 9px var(--nm-hi);--nmi:inset 3px 3px 7px var(--nm-lo),inset -3px -3px 7px var(--nm-hi)}
+:root[data-theme="dark"]{--bg:#101016;--panel:#1d1d27;--card:#1d1d27;--soft:#252533;--line:rgba(255,255,255,.07)}
+body{background:var(--bg)}
+.app{box-shadow:0 24px 60px rgba(40,30,110,.18)}
+nav{background:linear-gradient(180deg,#261d85,#1b1360);box-shadow:0 10px 30px rgba(27,19,96,.35)}
+nav button.on{color:#1b1360}
+.bn b{color:#ff7a59;font-weight:600}
+.card{box-shadow:var(--nmr)}
+.ic{background:var(--panel);box-shadow:var(--nmi)}
+.btn{background:var(--panel);color:var(--accd);box-shadow:var(--nms)}.btn:hover{background:var(--panel);color:var(--ink)}.btn:active{box-shadow:var(--nmi)}
+.btn.p{background:linear-gradient(135deg,#9a8ff0,#6d60c0);color:#fff;box-shadow:4px 6px 14px rgba(109,96,192,.4)}.btn.p:hover{background:linear-gradient(135deg,#8b7fd6,#5d51b0);color:#fff}
+input[type=text],input[type=password],input[type=email],select{border:0;background:var(--panel);box-shadow:var(--nmi)}
+textarea[style*="var(--card)"]{border:0;box-shadow:var(--nmi)}
+.bar{background:var(--panel);box-shadow:var(--nmi)}.bar i{background:linear-gradient(90deg,#8b7fd6,#ff7a59)}
+.badge{background:var(--panel);box-shadow:var(--nms)}
+.code{background:var(--panel);box-shadow:var(--nmi);color:var(--ink)}
+.tabs button{background:var(--panel);color:var(--mute);box-shadow:var(--nms)}.tabs button.on{background:#1b1360;color:#fff;box-shadow:var(--nmi)}
+.auth{box-shadow:var(--nmr)}
 </style>
 </head>
 <body>
@@ -64,7 +111,16 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const mail = u => u.trim().toLowerCase() + "@" + EMAIL_DOMAIN;
 const pretty = c => c ? c.slice(0, 4) + "-" + c.slice(4) : "";
 const ic = p => `<svg class="i" viewBox="0 0 24 24"><path d="${p}"/></svg>`;
-const ICON = { home: "M3 11l9-7 9 7v9H3zM9 20v-6h6v6", book: "M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11", code: "m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14", join: "M9 8a3 3 0 1 0 0 .1M3 19c0-3 3-5 6-5s6 2 6 5M18 8v6M15 11h6", out: "M9 4H5v16h4M16 8l4 4-4 4M20 12H9", cls: "M3 5h18v14H3zM3 10h18", school: "M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5" };
+const ICON = { home: "M3 11l9-7 9 7v9H3zM9 20v-6h6v6", book: "M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11", code: "m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14", join: "M9 8a3 3 0 1 0 0 .1M3 19c0-3 3-5 6-5s6 2 6 5M18 8v6M15 11h6", out: "M9 4H5v16h4M16 8l4 4-4 4M20 12H9", cls: "M3 5h18v14H3zM3 10h18", school: "M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5", bolt: "M13 2L4 14h7l-1 8 9-12h-7z", chev: "M13 17l-5-5 5-5M18 17l-5-5 5-5", sun: "M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", moon: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" };
+const LOGO = `<span class="logo"><svg viewBox="0 0 24 24"><path d="${ICON.bolt}"/></svg></span>`;
+function paintTheme() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  document.querySelectorAll(".thb").forEach(b => { b.innerHTML = ic(dark ? ICON.sun : ICON.moon) + (b.dataset.tx ? `<span class="tx">${dark ? "Light mode" : "Dark mode"}</span>` : ""); b.title = dark ? "Switch to light mode" : "Switch to dark mode"; });
+}
+function toggleTheme() {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = t; try { localStorage.setItem("bs-theme", t); } catch (e) {} paintTheme();
+}
 const niceErr = e => {
   const m = e?.message || String(e);
   if (/invalid login/i.test(m)) return "Wrong username or password.";
@@ -93,19 +149,25 @@ async function enter() {
 /* ---- sign in / join (accounts are created by your school, not by learners) ---- */
 function renderAuth() {
   if (tab === "new") tab = "in";
-  $("root").innerHTML = `<div class="auth"><div class="logo"></div>
-  <h1>School ERP</h1><div class="sub">Learn to code with your class.</div>
-  <div class="tabs" id="tabs"><button data-t="in" class="${tab === "in" ? "on" : ""}">Sign in</button><button data-t="join" class="${tab === "join" ? "on" : ""}">Join a class</button></div>
-  <form id="af" autocomplete="on">
-   ${tab === "join" ? `<label class="f">Class code<input type="text" id="code" placeholder="K7QM-3XPD" maxlength="12" required></label>` : ""}
-   <label class="f">Username<input type="text" id="u" autocomplete="username" required minlength="3" maxlength="30"></label>
-   <label class="f">Password<input type="password" id="p" autocomplete="current-password" required></label>
-   <div class="msg ${notice ? "e" : ""}" id="am" role="alert">${esc(notice)}</div>
-   <button class="btn p" style="width:100%;padding:11px" id="ab">${tab === "join" ? "Sign in and join class" : "Sign in"}</button>
-  </form>
-  <div class="sub" style="margin-top:12px">Your school gives you your username and a first password. You choose your own password the first time you sign in. Lost your password? Ask your school or tutor.</div></div>`;
-  notice = "";
-  $("tabs").onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; renderAuth(); } };
+  const join = tab === "join";
+  $("root").innerHTML = `<div class="login">
+   <section class="hero" aria-hidden="true"><svg viewBox="0 0 420 440" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="dtp" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.5" fill="#7a72d4" opacity=".7"/></pattern></defs><rect width="420" height="440" fill="#1b1360"/><rect x="24" y="24" width="84" height="56" fill="url(#dtp)"/><g fill="none" stroke="#4a3fc4" stroke-width="2" opacity=".7"><path d="M0 108H50L70 128H124"/><path d="M420 250H382L364 232H336"/><path d="M186 0V34L202 50V84"/><path d="M0 392H40L56 376H96"/></g><g fill="#7f72e8" opacity=".9"><circle cx="124" cy="128" r="3.5"/><circle cx="336" cy="232" r="3.5"/><circle cx="202" cy="84" r="3.5"/><circle cx="96" cy="376" r="3.5"/></g><!-- floating tech chips --><g font-family="ui-monospace,Menlo,Consolas,monospace" font-weight="700" text-anchor="middle"><rect x="296" y="34" width="62" height="34" rx="10" fill="#2d2796"/><text x="327" y="57" font-size="17" fill="#7be0a8">&lt;/&gt;</text><rect x="8" y="238" width="50" height="32" rx="10" fill="#2d2796"/><text x="33" y="260" font-size="17" fill="#ffd9a0">{ }</text><rect x="150" y="56" width="44" height="28" rx="9" fill="#2d2796"/><text x="172" y="76" font-size="14" fill="#c9b8ff">0101</text><rect x="364" y="262" width="40" height="28" rx="9" fill="#2d2796"/><text x="384" y="282" font-size="15" fill="#ff8fb1">#</text></g><g fill="none" stroke-linecap="round" stroke-width="3"><path d="M236 62a22 22 0 0 1 32 0" stroke="#7f87d6"/><path d="M242 70a13 13 0 0 1 20 0" stroke="#a7aef0"/></g><circle cx="252" cy="80" r="3.5" fill="#ff7a59"/><!-- shelf: robot + books --><rect x="48" y="178" width="130" height="9" rx="2" fill="#ebe8f7"/><polygon points="60,187 76,187 68,204" fill="#cfcbe8"/><line x1="79" y1="136" x2="79" y2="148" stroke="#cfd5ff" stroke-width="3"/><circle cx="79" cy="133" r="4" fill="#ff7a59"/><rect x="64" y="148" width="30" height="24" rx="6" fill="#cfd5ff"/><circle cx="73" cy="158" r="3.5" fill="#1b1360"/><circle cx="85" cy="158" r="3.5" fill="#1b1360"/><rect x="72" y="165" width="14" height="3" rx="1.5" fill="#1b1360"/><rect x="66" y="172" width="26" height="6" rx="2" fill="#8f9be0"/><rect x="108" y="146" width="13" height="32" rx="2" fill="#ff7a59"/><rect x="123" y="152" width="13" height="26" rx="2" fill="#7be0a8"/><rect x="138" y="142" width="13" height="36" rx="2" fill="#c9b8ff"/><rect x="153" y="150" width="13" height="28" rx="2" fill="#ffd9a0"/><!-- wall screen --><rect x="338" y="116" width="64" height="76" rx="6" fill="#eef0ff"/><rect x="346" y="124" width="48" height="60" rx="3" fill="#2b2a6b"/><text x="370" y="161" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="17" font-weight="700" text-anchor="middle" fill="#7be0a8">&lt;/&gt;</text><!-- floor bars --><rect x="26" y="406" width="34" height="9" rx="4.5" fill="#7f87d6"/><rect x="68" y="406" width="270" height="9" rx="4.5" fill="#a7aef0"/><!-- chair --><rect x="268" y="318" width="86" height="12" rx="6" fill="#2b2870"/><rect x="306" y="330" width="9" height="62" fill="#2b2870"/><rect x="282" y="390" width="62" height="8" rx="4" fill="#2b2870"/><!-- legs --><rect x="250" y="296" width="96" height="24" rx="12" fill="#6469b8"/><rect x="226" y="296" width="26" height="92" rx="12" fill="#6469b8"/><ellipse cx="236" cy="392" rx="26" ry="9" fill="#17123f"/><rect x="236" y="290" width="104" height="26" rx="13" fill="#525796"/><rect x="198" y="292" width="28" height="98" rx="12" fill="#525796"/><ellipse cx="208" cy="394" rx="28" ry="10" fill="#17123f"/><!-- torso, head --><path d="M262 190c0-12 10-20 24-20s26 8 26 20v104H262z" fill="#f6ecd9"/><rect x="278" y="160" width="14" height="16" fill="#f2a584"/><circle cx="284" cy="138" r="26" fill="#f2a584"/><path d="M258 134c-4-26 14-40 32-38 18 2 26 16 20 36-6-10-14-16-26-16-12 0-20 6-26 18z" fill="#2a1a3a"/><circle cx="276" cy="140" r="8" fill="#fff" fill-opacity=".35" stroke="#2a1a3a" stroke-width="2"/><circle cx="296" cy="140" r="8" fill="#fff" fill-opacity=".35" stroke="#2a1a3a" stroke-width="2"/><path d="M284 140h4" stroke="#2a1a3a" stroke-width="2"/><circle cx="276" cy="141" r="2" fill="#2a1a3a"/><circle cx="296" cy="141" r="2" fill="#2a1a3a"/><path d="M276 154q8 8 16 0" fill="none" stroke="#9a4a3a" stroke-width="2.5" stroke-linecap="round"/><!-- graduation cap --><rect x="266" y="106" width="36" height="12" rx="3" fill="#120d3a"/><polygon points="252,104 284,90 316,104 284,118" fill="#1d1654" stroke="#4a3fc4" stroke-width="1.5"/><path d="M312 105l6 24" stroke="#ffcc66" stroke-width="2.5" stroke-linecap="round"/><circle cx="318" cy="131" r="3.5" fill="#ffcc66"/><!-- raised arm --><path d="M270 200L240 178" stroke="#f6ecd9" stroke-width="16" stroke-linecap="round"/><circle cx="232" cy="172" r="8" fill="#f2a584"/><rect x="230" y="154" width="6" height="16" rx="3" fill="#f2a584"/><!-- desk --><rect x="56" y="270" width="312" height="12" rx="3" fill="#e2bf8e"/><rect x="76" y="282" width="10" height="112" fill="#4a1f3d"/><rect x="340" y="282" width="10" height="112" fill="#4a1f3d"/><rect x="76" y="330" width="274" height="6" fill="#4a1f3d" opacity=".55"/><!-- monitor with code --><rect x="66" y="196" width="150" height="62" rx="0" fill="none"/><rect x="64" y="176" width="156" height="84" rx="8" fill="#2b2a6b"/><rect x="72" y="184" width="140" height="68" rx="4" fill="#12103a"/><g><circle cx="80" cy="191" r="2" fill="#ff7b8a"/><circle cx="87" cy="191" r="2" fill="#ffd166"/><circle cx="94" cy="191" r="2" fill="#5fcf97"/><rect x="80" y="200" width="30" height="4" rx="2" fill="#ff8fb1"/><rect x="114" y="200" width="42" height="4" rx="2" fill="#c9b8ff"/><rect x="90" y="210" width="54" height="4" rx="2" fill="#7be0a8"/><rect x="148" y="210" width="26" height="4" rx="2" fill="#ffd9a0"/><rect x="90" y="220" width="36" height="4" rx="2" fill="#c9b8ff"/><rect x="130" y="220" width="48" height="4" rx="2" fill="#ff8fb1"/><rect x="80" y="230" width="20" height="4" rx="2" fill="#ffd9a0"/><rect x="104" y="230" width="58" height="4" rx="2" fill="#7be0a8"/><rect x="80" y="240" width="46" height="4" rx="2" fill="#c9b8ff"/><rect x="130" y="238" width="3" height="8" fill="#ff7a59"/></g><rect x="128" y="260" width="30" height="10" fill="#2b2a6b"/><rect x="168" y="263" width="60" height="7" rx="3" fill="#b9c0f2"/><!-- hand on keyboard --><path d="M270 218L246 254" stroke="#f6ecd9" stroke-width="16" stroke-linecap="round"/><circle cx="238" cy="260" r="8" fill="#f2a584"/></svg></section>
+   <section class="formside"><button class="thb tbtn" id="lth" type="button" aria-label="Switch light or dark mode"></button>
+    <form class="formbox" id="af" autocomplete="on">
+     <div class="wm">BRAIN<b>SPARK</b></div><h1>Welcome back!</h1>
+     ${join ? `<label class="fld"><b class="lb">Class code</b><input class="nm" type="text" id="code" placeholder="K7QM-3XPD" maxlength="12" required></label>` : ""}
+     <label class="fld"><b class="lb">Username</b><input class="nm" type="text" id="u" autocomplete="username" required minlength="3" maxlength="30" autofocus></label>
+     <label class="fld"><b class="lb">Password</b><span class="pw"><input class="nm" type="password" id="p" autocomplete="current-password" required><button type="button" id="sh" class="eye" aria-label="Show password">Show</button></span></label>
+     <button type="button" class="flink" id="fg">Forgot password?</button>
+     <div class="msg ${notice ? "e" : ""}" id="am" role="alert">${esc(notice)}</div>
+     <button class="go" id="ab">${join ? "Join class" : "Log in"}</button>
+     <div class="alt"><button type="button" id="alt">${join ? "Back to log in" : "Have a class code?"}</button></div>
+    </form></section></div>`;
+  notice = ""; paintTheme();
+  $("lth").onclick = toggleTheme;
+  $("alt").onclick = () => { tab = join ? "in" : "join"; renderAuth(); };
+  $("fg").onclick = () => say("Ask your school or tutor to reset it.");
+  $("sh").onclick = () => { const i = $("p"), show = i.type === "password"; i.type = show ? "text" : "password"; $("sh").textContent = show ? "Hide" : "Show"; };
   $("af").onsubmit = onAuth;
 }
 const say = (t, ok) => { const m = $("am"); if (m) { m.className = "msg " + (ok ? "g" : "e"); m.textContent = t; } };
@@ -127,7 +189,7 @@ async function onAuth(e) {
 }
 
 function renderForcePw() {
-  $("root").innerHTML = `<div class="auth"><div class="logo"></div><h1>Choose your own password</h1><div class="sub">Hi ${esc(me.display_name)}. Your first password was given to you, so pick a new one only you know.</div>
+  $("root").innerHTML = `<div class="auth"><div class="brand" style="color:var(--ink);justify-content:flex-start">${LOGO}<span class="bn" style="display:inline">BRAIN<b>SPARK</b></span></div><h1>Choose your own password</h1><div class="sub">Hi ${esc(me.display_name)}. Your first password was given to you, so pick a new one only you know.</div>
   <form id="pf"><label class="f">New password (8 or more characters)<input type="password" id="np1" autocomplete="new-password" minlength="8" required></label>
   <label class="f">Type it again<input type="password" id="np2" autocomplete="new-password" minlength="8" required></label>
   <div class="msg" id="am" role="alert"></div><button class="btn p" style="width:100%;padding:11px">Save password</button></form></div>`;
@@ -145,10 +207,16 @@ function renderApp() {
   const learner = me.role === "learner", tutor = me.role === "tutor", staff = me.role === "school" || me.role === "admin";
   const items = learner ? [["home", "Home", ICON.home], ["courses", "My courses", ICON.book], ["work", "Coding workspace", ICON.code], ["join", "Join a class", ICON.join]]
     : tutor ? [["home", "My classes", ICON.cls]] : staff ? [["home", "Overview", ICON.home], ...(me.role === "admin" ? [["schools", "Schools", ICON.school]] : []), ["accounts", "Accounts", ICON.join], ["classes", "Classes", ICON.cls]] : [["home", "Home", ICON.home]];
-  $("root").innerHTML = `<div class="app"><nav aria-label="Menu"><div class="logo"></div>
-   ${items.map(([v, t, p]) => `<button data-v="${v}" class="${v === view ? "on" : ""}" title="${t}" aria-label="${t}">${ic(p)}</button>`).join("")}
-   <div class="sp"></div><button id="so" title="Sign out" aria-label="Sign out">${ic(ICON.out)}</button></nav><main id="main"></main></div>`;
-  document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut(); view = b.dataset.v; ctx = null; renderApp(); };
+  let wide = true; try { wide = localStorage.getItem("bs-nav") !== "slim"; } catch (e) {}
+  $("root").innerHTML = `<div class="app${wide ? " wide" : ""}"><nav aria-label="Menu"><div class="brand">${LOGO}<span class="bn">BRAIN<b>SPARK</b></span></div>
+   ${items.map(([v, t, p]) => `<button data-v="${v}" class="${v === view ? "on" : ""}" title="${t}" aria-label="${t}">${ic(p)}<span class="tx">${t}</span></button>`).join("")}
+   <div class="sp"></div><button id="tg" title="Collapse or expand the side panel" aria-label="Collapse or expand the side panel">${ic(ICON.chev)}<span class="tx">Collapse panel</span></button>
+   <button class="thb" id="th" data-tx="1" aria-label="Switch light or dark mode"></button>
+   <button id="so" title="Sign out" aria-label="Sign out">${ic(ICON.out)}<span class="tx">Sign out</span></button></nav><main id="main"></main></div>`;
+  paintTheme();
+  document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut();
+    if (b.id === "th") return toggleTheme();
+    if (b.id === "tg") { const on = document.querySelector(".app").classList.toggle("wide"); try { localStorage.setItem("bs-nav", on ? "wide" : "slim"); } catch (e) {} return; } view = b.dataset.v; ctx = null; renderApp(); };
   if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL, class: classL }[view])();
   else if (tutor) (view === "tclass" ? tclassPage : tutorHome)();
   else if (staff) ({ home: overviewS, accounts: accountsPage, schools: schoolsPage, classes: classesPage }[view] || overviewS)();
