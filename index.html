@@ -98,6 +98,9 @@ textarea[style*="var(--card)"]{border:0;box-shadow:var(--nmi)}
 .auth{box-shadow:var(--nmr)}
 .login{margin-top:5vh}
 @media(max-width:820px){.login{margin-top:10vh;border-radius:30px}.hero{height:200px}.hero svg{height:200px}}
+input[type=number],input[type=datetime-local]{border:0;background:var(--panel);box-shadow:var(--nmi);border-radius:12px;padding:10px 12px;color:var(--ink)}
+.opt{display:flex;gap:10px;align-items:center;padding:9px 4px;cursor:pointer}
+.lbody{white-space:pre-wrap;margin:4px 0 10px 26px;padding:10px 12px;border-radius:12px;box-shadow:var(--nmi)}
 </style>
 </head>
 <body>
@@ -135,7 +138,7 @@ const niceErr = e => {
   return m;
 };
 
-let me = null, view = "home", tab = "in", notice = "", busy = false, ctx = null, goClass = null;
+let me = null, view = "home", tab = "in", notice = "", busy = false, ctx = null, ctx2 = null, goClass = null;
 
 /* ---- start ---- */
 sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { me = null; renderAuth(); } });
@@ -211,7 +214,7 @@ function start() { view = goClass ? "class" : "home"; ctx = goClass; goClass = n
 function renderApp() {
   const learner = me.role === "learner", tutor = me.role === "tutor", staff = me.role === "school" || me.role === "admin";
   const items = learner ? [["home", "Home", ICON.home], ["courses", "My courses", ICON.book], ["work", "Coding workspace", ICON.code], ["join", "Join a class", ICON.join]]
-    : tutor ? [["home", "My classes", ICON.cls]] : staff ? [["home", "Overview", ICON.home], ...(me.role === "admin" ? [["schools", "Schools", ICON.school]] : []), ["accounts", "Accounts", ICON.join], ["classes", "Classes", ICON.cls]] : [["home", "Home", ICON.home]];
+    : tutor ? [["home", "My classes", ICON.cls], ["tcourses", "Courses", ICON.book]] : staff ? [["home", "Overview", ICON.home], ...(me.role === "admin" ? [["schools", "Schools", ICON.school]] : []), ["accounts", "Accounts", ICON.join], ["classes", "Classes", ICON.cls]] : [["home", "Home", ICON.home]];
   let wide = true; try { wide = localStorage.getItem("bs-nav") !== "slim"; } catch (e) {}
   $("root").innerHTML = `<div class="app${wide ? " wide" : ""}"><nav aria-label="Menu"><div class="brand">${LOGO}<span class="bn">BRAIN<b>SPARK</b></span></div>
    ${items.map(([v, t, p]) => `<button data-v="${v}" class="${v === view ? "on" : ""}" title="${t}" aria-label="${t}">${ic(p)}<span class="tx">${t}</span></button>`).join("")}
@@ -222,8 +225,8 @@ function renderApp() {
   document.querySelector("nav").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "so") return sb.auth.signOut();
     if (b.id === "th") return toggleTheme();
     if (b.id === "tg") { const on = document.querySelector(".app").classList.toggle("wide"); try { localStorage.setItem("bs-nav", on ? "wide" : "slim"); } catch (e) {} return; } view = b.dataset.v; ctx = null; renderApp(); };
-  if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL, class: classL }[view])();
-  else if (tutor) (view === "tclass" ? tclassPage : tutorHome)();
+  if (learner) ({ home: homeL, courses: coursesL, work: workL, join: joinL, class: classL, assign: assignL, quiz: quizL }[view])();
+  else if (tutor) ({ home: tutorHome, tclass: tclassPage, tcourses: tutorCourses }[view] || tutorHome)();
   else if (staff) ({ home: overviewS, accounts: accountsPage, schools: schoolsPage, classes: classesPage }[view] || overviewS)();
   else $("main").innerHTML = `<h1>Hello, ${esc(me.display_name)}</h1><div class="sub">The ${esc(me.role)} dashboard is not built yet.</div>`;
 }
@@ -238,7 +241,7 @@ async function homeL() {
     sb.from("class_memberships").select("classes(id,name,schools(name),profiles!classes_tutor_id_fkey(display_name))").eq("student_id", uid),
     sb.from("class_courses").select("courses(id,title,language,lessons(id))"),
     sb.from("progress_records").select("lesson_id").eq("student_id", uid),
-    sb.from("assignments").select("id,title,due_at,classes(name)").order("due_at", { nullsFirst: false }),
+    sb.from("assignments").select("id,title,due_at,class_id,classes(name)").order("due_at", { nullsFirst: false }),
     sb.from("submissions").select("assignment_id").eq("student_id", uid),
     sb.from("user_achievements").select("achievements(title)").eq("user_id", uid),
     sb.from("coding_projects").select("id,name,updated_at").eq("owner_id", uid).order("updated_at", { ascending: false }),
@@ -252,13 +255,13 @@ async function homeL() {
   <div class="cols"><div>
    <div class="card"><h2>Continue learning</h2>${courses.length ? courses.map(c => { const n = c.lessons.length, d = c.lessons.filter(l => done.has(l.id)).length, pc = n ? Math.round(100 * d / n) : 0;
       return `<div class="item"><div class="ic">${esc(c.title.slice(0, 2))}</div><div><b>${esc(c.title)}</b><small>${d} of ${n} lessons</small><div class="bar"><i style="width:${pc}%"></i></div></div><button class="btn" data-go="courses">Continue</button></div>`; }).join("") : `<div class="mute">No courses yet. Your tutor will add courses to your class.</div>`}</div>
-   <div class="card"><h2>Pending assignments</h2>${pending.length ? pending.map(a => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(a.title)}</b><small>${esc(a.classes?.name)} · ${a.due_at ? "Due " + new Date(a.due_at).toLocaleDateString("en-GB") : "No deadline"}</small></div></div>`).join("") : `<div class="mute">Nothing due. Nice.</div>`}</div>
+   <div class="card"><h2>Pending assignments</h2>${pending.length ? pending.map(a => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(a.title)}</b><small>${esc(a.classes?.name)} · ${a.due_at ? "Due " + new Date(a.due_at).toLocaleDateString("en-GB") : "No deadline"}</small></div><button class="btn" data-asg="${a.id}" data-cl="${a.class_id}">Open</button></div>`).join("") : `<div class="mute">Nothing due. Nice.</div>`}</div>
   </div><div>
    <div class="card"><h2>My classes</h2>${cl.data.length ? cl.data.map(m => `<div class="item"><div class="ic">${esc((m.classes?.name || "?").slice(0, 2))}</div><div><b>${esc(m.classes?.name)}</b><small>Tutor ${esc(m.classes?.profiles?.display_name)}${m.classes?.schools ? " · " + esc(m.classes.schools.name) : ""}</small></div><button class="btn" data-class="${m.classes?.id}">Open</button></div>`).join("") : `<div class="mute">You have not joined a class yet.</div><div style="margin-top:10px"><button class="btn p" data-go="join">Join a class</button></div>`}</div>
    <div class="card"><h2>Achievements</h2>${ach.data.length ? ach.data.map(a => `<span class="badge">${esc(a.achievements?.title)}</span>`).join("") : `<div class="mute">Finish a lesson or save a project to earn your first badge.</div>`}</div>
    <div class="card"><h2>Recent projects</h2>${pj.data.slice(0, 4).map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>${new Date(p.updated_at).toLocaleString("en-GB")}</small></div></div>`).join("") || `<div class="mute">No projects yet.</div>`}</div>
   </div></div>`;
-  $("main").onclick = e => { const g = e.target.dataset.go, k = e.target.dataset.class; if (k) { view = "class"; ctx = k; renderApp(); } else if (g) { view = g; renderApp(); } };
+  $("main").onclick = e => { const g = e.target.dataset.go, k = e.target.dataset.class; if (e.target.dataset.asg) { view = "assign"; ctx = e.target.dataset.cl; ctx2 = e.target.dataset.asg; renderApp(); } else if (k) { view = "class"; ctx = k; renderApp(); } else if (g) { view = g; renderApp(); } };
 }
 
 /* ---- learner: courses ---- */
@@ -272,8 +275,8 @@ async function coursesL() {
   const courses = [...new Map(cc.data.map(x => x.courses).filter(Boolean).map(c => [c.id, c])).values()];
   $("cl").outerHTML = `<div id="cl">${courses.length ? courses.map(c => { c.lessons.sort((a, b) => a.position - b.position); const n = c.lessons.length, d = c.lessons.filter(l => done.has(l.id)).length;
     return `<div class="card"><div class="item" style="border:0;padding:0"><div class="ic">${esc(c.title.slice(0, 2))}</div><div><b>${esc(c.title)}</b><small>${esc(c.language)} · ${n ? Math.round(100 * d / n) : 0}% complete</small><div class="bar"><i style="width:${n ? 100 * d / n : 0}%"></i></div></div><button class="btn" data-open="${c.id}">Lessons</button></div>
-    <div class="lessons" id="L${c.id}" hidden>${c.lessons.map(l => `<label><input type="checkbox" data-l="${l.id}" ${done.has(l.id) ? "checked" : ""}>${esc(l.title)}</label>`).join("")}</div></div>`; }).join("") : `<div class="card mute">No courses yet. Join a class and your tutor will add courses.</div>`}</div>`;
-  $("main").onclick = async e => { const o = e.target.dataset.open; if (o) { const L = $("L" + o); L.hidden = !L.hidden; } };
+    <div class="lessons" id="L${c.id}" hidden>${c.lessons.map(l => `<div><label><input type="checkbox" data-l="${l.id}" ${done.has(l.id) ? "checked" : ""}>${esc(l.title)}</label>${l.body ? `<button class="btn" data-lb="${l.id}" style="padding:3px 10px;margin-left:26px">Read</button><div class="lbody" id="B${l.id}" hidden>${esc(l.body)}</div>` : ""}</div>`).join("")}</div></div>`; }).join("") : `<div class="card mute">No courses yet. Join a class and your tutor will add courses.</div>`}</div>`;
+  $("main").onclick = async e => { const o = e.target.dataset.open, lb = e.target.dataset.lb; if (o) { const L = $("L" + o); L.hidden = !L.hidden; } if (lb) { const B = $("B" + lb); B.hidden = !B.hidden; } };
   $("main").onchange = async e => { const l = e.target.dataset.l; if (!l) return;
     const r = e.target.checked ? await sb.from("progress_records").insert({ student_id: me.id, lesson_id: l }) : await sb.from("progress_records").delete().eq("student_id", me.id).eq("lesson_id", l);
     if (r.error) { e.target.checked = !e.target.checked; flash(r.error.message, true); } else { const open = [...document.querySelectorAll(".lessons:not([hidden])")].map(x => x.id); await coursesL(); open.forEach(id => { const x = $(id); if (x) x.hidden = false; }); } };
@@ -406,29 +409,82 @@ async function download(path) {
 const noteHtml = n => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(n.title)}</b>${n.body ? `<small style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}</small>` : ""}<small>${new Date(n.created_at).toLocaleDateString("en-GB")}${n.file_name ? " · " + esc(n.file_name) : ""}</small></div>${n.file_path ? `<button class="btn" data-f="${esc(n.file_path)}">Download</button>` : ""}</div>`;
 
 /* ---- learner: class page (where the join code lands) ---- */
+const ld = `<div class="mute">Loading...</div>`;
+const when = d => d ? new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+const backBtn = (attr, label) => `<div style="margin-bottom:8px"><button class="btn" ${attr}>&larr; ${label}</button></div>`;
 async function classL() {
-  const id = ctx; $("main").innerHTML = `<div class="mute">Loading...</div>`;
-  const [c, n, a, sub, cc, pr] = await Promise.all([
+  const id = ctx; $("main").innerHTML = ld;
+  const [c, n, a, sub, cc, pr, qz, qa] = await Promise.all([
     sb.from("classes").select("id,name,announcement,workspace_tabs,schools(name),profiles!classes_tutor_id_fkey(display_name)").eq("id", id).single(),
     sb.from("class_notes").select("id,title,body,file_path,file_name,created_at").eq("class_id", id).order("created_at", { ascending: false }),
     sb.from("assignments").select("id,title,due_at").eq("class_id", id).order("due_at", { nullsFirst: false }),
-    sb.from("submissions").select("assignment_id").eq("student_id", me.id),
+    sb.from("submissions").select("assignment_id,grade").eq("student_id", me.id),
     sb.from("class_courses").select("courses(id,title,lessons(id))").eq("class_id", id),
-    sb.from("progress_records").select("lesson_id").eq("student_id", me.id)]);
-  const err = [c, n, a, sub, cc, pr].find(r => r.error); if (err) return bad(err.error);
-  const k = c.data, done = new Set(pr.data.map(x => x.lesson_id)), sent = new Set(sub.data.map(x => x.assignment_id));
-  $("main").innerHTML = `<div style="margin-bottom:8px"><button class="btn" data-go="home">&larr; Home</button></div>
+    sb.from("progress_records").select("lesson_id").eq("student_id", me.id),
+    sb.from("quizzes").select("id,title").eq("class_id", id),
+    sb.from("quiz_attempts").select("quiz_id,score").eq("student_id", me.id)]);
+  const err = [c, n, a, sub, cc, pr, qz, qa].find(r => r.error); if (err) return bad(err.error);
+  const k = c.data, done = new Set(pr.data.map(x => x.lesson_id)), sent = new Map(sub.data.map(x => [x.assignment_id, x.grade]));
+  const best = q => qa.data.filter(x => x.quiz_id === q).reduce((m, x) => Math.max(m, x.score), -1);
+  $("main").innerHTML = `${backBtn('data-go="home"', "Home")}
   <h1>${esc(k.name)}</h1><div class="sub">Tutor ${esc(k.profiles?.display_name)}${k.schools ? " · " + esc(k.schools.name) : ""}</div>
   ${k.announcement ? `<div class="card"><h2>From your tutor</h2><div style="white-space:pre-wrap">${esc(k.announcement)}</div></div>` : ""}
   <div class="cols"><div>
    <div class="card"><h2>Coding space</h2><div class="mute" style="margin-bottom:10px">In this class you write: ${k.workspace_tabs.map(t => `<span class="badge">${LBL[t]}</span>`).join("")}</div><button class="btn p" data-work="1">Open coding space</button></div>
+   <div class="card"><h2>Assignments</h2>${a.data.map(x => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(x.title)}</b><small>${x.due_at ? "Due " + when(x.due_at) : "No deadline"}${sent.has(x.id) ? (sent.get(x.id) != null ? " · Graded " + sent.get(x.id) + "/100" : " · Handed in") : ""}</small></div><button class="btn" data-asg="${x.id}">Open</button></div>`).join("") || `<div class="mute">Nothing assigned yet.</div>`}</div>
+   <div class="card"><h2>Quizzes</h2>${qz.data.map(x => `<div class="item"><div class="ic">?</div><div><b>${esc(x.title)}</b><small>${best(x.id) >= 0 ? "Best score " + best(x.id) + "%" : "Not tried yet"}</small></div><button class="btn" data-qz="${x.id}">${best(x.id) >= 0 ? "Try again" : "Start"}</button></div>`).join("") || `<div class="mute">No quizzes yet.</div>`}</div>
    <div class="card"><h2>Class notes</h2>${n.data.map(noteHtml).join("") || `<div class="mute">No notes yet. Your tutor will add them here.</div>`}</div>
   </div><div>
-   <div class="card"><h2>Assignments</h2>${a.data.map(x => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(x.title)}</b><small>${x.due_at ? "Due " + new Date(x.due_at).toLocaleDateString("en-GB") : "No deadline"}${sent.has(x.id) ? " · Submitted" : ""}</small></div></div>`).join("") || `<div class="mute">Nothing assigned yet.</div>`}</div>
    <div class="card"><h2>Courses</h2>${cc.data.map(x => x.courses).filter(Boolean).map(c2 => { const t = c2.lessons.length, d = c2.lessons.filter(l => done.has(l.id)).length; return `<div class="item"><div class="ic">${esc(c2.title.slice(0, 2))}</div><div><b>${esc(c2.title)}</b><small>${d} of ${t} lessons</small><div class="bar"><i style="width:${t ? 100 * d / t : 0}%"></i></div></div><button class="btn" data-go="courses">Open</button></div>`; }).join("") || `<div class="mute">No courses assigned yet.</div>`}</div>
   </div></div>`;
-  $("main").onclick = e => { const g = e.target.dataset.go, f = e.target.dataset.f;
-    if (g) { view = g; ctx = null; renderApp(); } if (e.target.dataset.work) { view = "work"; renderApp(); } if (f) download(f); };
+  $("main").onclick = e => { const d = e.target.dataset;
+    if (d.go) { view = d.go; ctx = null; renderApp(); } if (d.work) { view = "work"; renderApp(); } if (d.f) download(d.f);
+    if (d.asg) { view = "assign"; ctx2 = d.asg; renderApp(); } if (d.qz) { view = "quiz"; ctx2 = d.qz; renderApp(); } };
+}
+
+/* ---- learner: one assignment ---- */
+async function assignL() {
+  const id = ctx2; $("main").innerHTML = ld;
+  const [a, s1, pj] = await Promise.all([
+    sb.from("assignments").select("id,title,instructions,due_at,class_id").eq("id", id).single(),
+    sb.from("submissions").select("id,project_id,submitted_at,grade").eq("assignment_id", id).eq("student_id", me.id).maybeSingle(),
+    sb.from("coding_projects").select("id,name,class_id").eq("owner_id", me.id).order("updated_at", { ascending: false })]);
+  const err = [a, s1, pj].find(r => r.error); if (err) return bad(err.error);
+  const A = a.data, S = s1.data;
+  const fb = S ? await sb.from("feedback").select("body,created_at").eq("submission_id", S.id).order("created_at") : { data: [] };
+  const late = S && A.due_at && new Date(S.submitted_at) > new Date(A.due_at);
+  const mine = pj.data.filter(p => p.class_id === A.class_id).concat(pj.data.filter(p => p.class_id !== A.class_id));
+  $("main").innerHTML = `${backBtn('data-bk="1"', "Back to class")}<h1>${esc(A.title)}</h1><div class="sub">${A.due_at ? "Due " + when(A.due_at) : "No deadline"}</div>
+  <div class="card"><h2>Instructions</h2><div style="white-space:pre-wrap">${esc(A.instructions || "No extra instructions.")}</div></div>
+  ${S ? `<div class="card"><h2>Your work</h2><div>Handed in ${when(S.submitted_at)}${late ? " (late)" : ""}</div>${S.grade != null ? `<div style="margin-top:8px"><span class="badge">Grade ${S.grade} / 100</span></div>` : `<div class="mute" style="margin-top:6px">Waiting for your tutor to grade it.</div>`}${fb.data.map(f => `<div class="item"><div style="white-space:pre-wrap">${esc(f.body)}</div></div>`).join("")}</div>` : ""}
+  ${S && S.grade != null ? "" : `<div class="card"><h2>${S ? "Hand in again" : "Hand in"}</h2>${mine.length ? `<div class="row"><select id="sp" aria-label="Project">${mine.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><button class="btn p" id="hs">${S ? "Resubmit" : "Submit"}</button></div><div class="mute" style="margin-top:8px">Your project is copied as it is right now. Change it later and hand in again until it is graded.</div>` : `<div class="mute">Save a project in the coding space first, then come back to hand it in.</div>`}<div style="margin-top:10px"><button class="btn" data-work="1">Open coding space</button></div><div class="msg" id="sm" role="alert"></div></div>`}`;
+  $("main").onclick = async e => { const d = e.target.dataset;
+    if (d.bk) { view = "class"; renderApp(); } if (d.work) { view = "work"; renderApp(); }
+    if (e.target.id === "hs") { e.target.disabled = true; const pid = $("sp").value;
+      const { data: p, error } = await sb.from("coding_projects").select("files").eq("id", pid).single(); if (error) { $("sm").className = "msg e"; $("sm").textContent = error.message; return; }
+      const r = S ? await sb.from("submissions").update({ project_id: pid, files: p.files, submitted_at: new Date().toISOString() }).eq("id", S.id)
+        : await sb.from("submissions").insert({ assignment_id: id, student_id: me.id, project_id: pid, files: p.files });
+      if (r.error) { $("sm").className = "msg e"; $("sm").textContent = r.error.message; e.target.disabled = false; } else assignL(); } };
+}
+
+/* ---- learner: take a quiz ---- */
+async function quizL() {
+  const id = ctx2; $("main").innerHTML = ld;
+  const [z, qs, at] = await Promise.all([
+    sb.from("quizzes").select("id,title").eq("id", id).single(),
+    sb.from("quiz_questions").select("id,position,prompt,options").eq("quiz_id", id).order("position"),
+    sb.from("quiz_attempts").select("score,created_at").eq("quiz_id", id).eq("student_id", me.id).order("created_at", { ascending: false })]);
+  const err = [z, qs, at].find(r => r.error); if (err) return bad(err.error);
+  const bestScore = at.data.reduce((m, x) => Math.max(m, x.score), -1);
+  $("main").innerHTML = `${backBtn('data-bk="1"', "Back to class")}<h1>${esc(z.data.title)}</h1><div class="sub">${bestScore >= 0 ? "Best score " + bestScore + "% · " + at.data.length + " attempt(s)" : "Pick one answer for each question."}</div>
+  ${qs.data.map((q, i) => `<div class="card"><b>${i + 1}. ${esc(q.prompt)}</b>${q.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}"> ${esc(o)}</label>`).join("")}</div>`).join("")}
+  <button class="btn p" id="qs">Submit answers</button><div id="qr"></div>`;
+  $("main").onclick = async e => { if (e.target.dataset.bk) { view = "class"; renderApp(); }
+    if (e.target.id === "qs") { e.target.disabled = true;
+      const answers = qs.data.map((_, i) => { const r = document.querySelector(`input[name="q${i}"]:checked`); return r ? +r.value : -1; });
+      const { data, error } = await sb.rpc("submit_quiz", { p_quiz: id, p_answers: answers });
+      if (error) { e.target.disabled = false; $("qr").innerHTML = `<div class="msg e">${esc(error.message)}</div>`; return; }
+      $("qr").innerHTML = `<div class="card" style="margin-top:14px"><h2>Your score</h2><span class="badge" style="font-size:18px">${data.score}%</span> <span class="mute">${data.correct} of ${data.total} correct</span><div style="margin-top:10px"><button class="btn" data-bk="1">Back to class</button></div></div>`; } };
 }
 
 /* ---- learner: coding workspace (free, or inside a class with the tutor's rules) ---- */
@@ -483,6 +539,85 @@ async function listProjects() {
   box.className = ""; box.innerHTML = data.length ? data.map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>Saved ${new Date(p.updated_at).toLocaleString("en-GB")}</small></div><button class="btn" data-o="${p.id}">Open</button><button class="btn" data-x="${p.id}">Delete</button></div>`).join("") : `<div class="mute">No saved projects yet. Write some code and select Save.</div>`;
 }
 
+/* ---- tutor: build courses and lessons ---- */
+async function tutorCourses() {
+  $("main").innerHTML = ld;
+  const { data, error } = await sb.from("courses").select("id,title,language,description,lessons(id,position,title,body)").eq("created_by", me.id).order("title");
+  if (error) return bad(error);
+  $("main").innerHTML = `<h1>Courses</h1><div class="sub">Build a course, add lessons, then assign it to a class from the class page.</div>
+  <div class="card" style="max-width:640px"><h2>New course</h2><div class="row"><input type="text" id="ct" placeholder="Course title" maxlength="80" aria-label="Course title"><select id="cl" aria-label="Language"><option value="html">HTML</option><option value="css">CSS</option><option value="javascript">JavaScript</option><option value="python">Python</option><option value="scratch">Scratch</option></select></div>
+   <label class="f" style="margin-top:10px">Description (optional)<input type="text" id="cd" maxlength="300"></label><button class="btn p" id="cc">Create course</button><div class="msg" id="cm" role="alert"></div></div>
+  ${data.map(c => { c.lessons.sort((a, b) => a.position - b.position); return `<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(c.title)}</b><div class="mute">${esc(c.language)} · ${c.lessons.length} lesson(s)</div></div><div class="row"><button class="btn" data-oc="${c.id}">Lessons</button><button class="btn" data-dc="${c.id}">Delete</button></div></div>
+   <div id="C${c.id}" hidden style="margin-top:12px">${c.lessons.map(l => `<div class="item"><div class="ic">${l.position}</div><div><b>${esc(l.title)}</b><small>${esc((l.body || "").slice(0, 80))}</small></div><button class="btn" data-dl="${l.id}">Delete</button></div>`).join("")}
+    <label class="f" style="margin-top:10px">New lesson title<input type="text" data-lt="${c.id}" maxlength="120"></label><label class="f">Lesson content<textarea data-lb="${c.id}" style="height:110px;background:var(--card);color:var(--ink)" maxlength="20000"></textarea></label><button class="btn p" data-al="${c.id}" data-n="${c.lessons.length ? c.lessons[c.lessons.length - 1].position : 0}">Add lesson</button></div></div>`; }).join("") || `<div class="card mute">No courses of your own yet.</div>`}`;
+  const open = new Set(); const note = (t) => { $("cm").className = "msg e"; $("cm").textContent = t; };
+  $("main").onclick = async e => { const d = e.target.dataset;
+    if (e.target.id === "cc") { const t = $("ct").value.trim(); if (t.length < 2) return note("Give the course a title.");
+      const { error } = await sb.from("courses").insert({ created_by: me.id, title: t, language: $("cl").value, description: $("cd").value.trim() || null }); return error ? note(error.message) : tutorCourses(); }
+    if (d.oc) { const b = $("C" + d.oc); b.hidden = !b.hidden; }
+    if (d.dc && confirm("Delete this course and its lessons?")) { const { error } = await sb.from("courses").delete().eq("id", d.dc); return error ? note(error.message) : tutorCourses(); }
+    if (d.dl && confirm("Delete this lesson?")) { const { error } = await sb.from("lessons").delete().eq("id", d.dl); return error ? note(error.message) : tutorCourses(); }
+    if (d.al) { const t = document.querySelector(`[data-lt="${d.al}"]`).value.trim(); if (!t) return note("Give the lesson a title.");
+      const { error } = await sb.from("lessons").insert({ course_id: d.al, position: +d.n + 1, title: t, body: document.querySelector(`[data-lb="${d.al}"]`).value });
+      return error ? note(error.message) : tutorCourses(); } };
+}
+
+/* ---- tutor: assignments and grading (inside a class page) ---- */
+async function tAssign(k, openId) {
+  const box = $("tasg"); if (!box) return; const id = k.id;
+  const as = await sb.from("assignments").select("id,title,instructions,due_at").eq("class_id", id).order("created_at", { ascending: false });
+  if (as.error) return (box.innerHTML = `<div class="card"><div class="msg e">${esc(as.error.message)}</div></div>`);
+  const ids = as.data.map(a => a.id);
+  const ss = ids.length ? await sb.from("submissions").select("id,assignment_id,student_id,files,submitted_at,grade,profiles(display_name)").in("assignment_id", ids) : { data: [] };
+  const subs = ss.data || [], members = k.class_memberships;
+  box.innerHTML = `<div class="card"><h2>Assignments</h2>
+   <label class="f">Title<input type="text" id="at" maxlength="120"></label>
+   <label class="f">Instructions<textarea id="ai" style="height:80px;background:var(--card);color:var(--ink)" maxlength="5000"></textarea></label>
+   <label class="f">Deadline (optional)<input type="datetime-local" id="ad"></label>
+   <button class="btn p" data-ca="1">Create assignment</button><div class="msg" id="am2" role="alert"></div>
+   <div style="margin-top:10px">${as.data.map(a => { const n = subs.filter(s => s.assignment_id === a.id).length; return `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(a.title)}</b><small>${a.due_at ? "Due " + when(a.due_at) : "No deadline"} · ${n} of ${members.length} handed in</small></div><button class="btn" data-sa="${a.id}">Submissions</button><button class="btn" data-da="${a.id}">Delete</button></div>`; }).join("") || `<div class="mute">No assignments yet.</div>`}</div><div id="sbp"></div></div>`;
+  const msg = t => { $("am2").className = "msg e"; $("am2").textContent = t; };
+  const show = aid => { const A = as.data.find(a => a.id === aid), list = subs.filter(s => s.assignment_id === aid), pend = members.filter(m => !list.some(s => s.student_id === m.student_id));
+    $("sbp").innerHTML = `<h2 style="margin-top:16px">Submissions: ${esc(A.title)}</h2>${list.map(s => `<div class="item" style="flex-wrap:wrap"><div><b>${esc(s.profiles?.display_name)}</b><small>${when(s.submitted_at)}${A.due_at && new Date(s.submitted_at) > new Date(A.due_at) ? " · late" : ""}${s.grade != null ? " · graded " + s.grade : ""}</small></div><button class="btn" data-pr="${s.id}">Preview</button><input type="number" min="0" max="100" value="${s.grade ?? ""}" data-gi="${s.id}" style="width:84px" placeholder="/100" aria-label="Grade"><input type="text" data-gc="${s.id}" placeholder="Comment" style="flex:1;min-width:130px" maxlength="500" aria-label="Comment"><button class="btn p" data-gs="${s.id}" data-a="${aid}">Save</button><div id="pv${s.id}" style="width:100%"></div></div>`).join("") || `<div class="mute">Nothing handed in yet.</div>`}${pend.length ? `<div class="mute" style="margin-top:8px">Not handed in: ${pend.map(m => esc(m.profiles?.display_name)).join(", ")}</div>` : ""}`; };
+  if (openId) show(openId);
+  box.onclick = async e => { const d = e.target.dataset;
+    if (d.ca) { const t = $("at").value.trim(); if (t.length < 2) return msg("Give the assignment a title.");
+      const { error } = await sb.from("assignments").insert({ class_id: id, title: t, instructions: $("ai").value, due_at: $("ad").value ? new Date($("ad").value).toISOString() : null }); return error ? msg(error.message) : tAssign(k); }
+    if (d.da && confirm("Delete this assignment and all its submissions?")) { const { error } = await sb.from("assignments").delete().eq("id", d.da); return error ? msg(error.message) : tAssign(k); }
+    if (d.sa) show(d.sa);
+    if (d.pr) { const s = subs.find(x => x.id === d.pr), f = s.files || {}; $("pv" + s.id).innerHTML = `<iframe sandbox="allow-scripts" title="Preview" style="height:220px;margin-top:8px"></iframe>`; $("pv" + s.id).firstChild.srcdoc = buildDoc(f.html ?? k.workspace_html, f.css, f.js); }
+    if (d.gs) { const g = document.querySelector(`[data-gi="${d.gs}"]`).value; if (g === "") return msg("Type a grade from 0 to 100.");
+      const { error } = await sb.rpc("grade_submission", { p_submission: d.gs, p_grade: +g, p_comment: document.querySelector(`[data-gc="${d.gs}"]`).value }); return error ? msg(error.message) : tAssign(k, d.a); } };
+}
+
+/* ---- tutor: quizzes (inside a class page) ---- */
+let qn = 0;
+const qBlock = () => { const n = ++qn; return `<div class="card qb" style="margin:10px 0"><label class="f">Question<input type="text" class="qp" maxlength="300"></label>${[0, 1, 2, 3].map(j => `<div class="row" style="margin-bottom:6px"><input type="radio" name="c${n}" value="${j}" ${j === 0 ? "checked" : ""} aria-label="Correct answer ${j + 1}"><input type="text" class="qo" placeholder="Option ${j + 1}${j < 2 ? "" : " (optional)"}" maxlength="150"></div>`).join("")}<div class="mute">Tick the circle next to the correct answer.</div><button class="btn" data-rq="1" type="button" style="margin-top:6px">Remove question</button></div>`; };
+async function tQuizzes(k) {
+  const box = $("tqz"); if (!box) return; const id = k.id;
+  const z = await sb.from("quizzes").select("id,title").eq("class_id", id).order("title");
+  if (z.error) return (box.innerHTML = `<div class="card"><div class="msg e">${esc(z.error.message)}</div></div>`);
+  box.innerHTML = `<div class="card"><h2>Quizzes</h2>${z.data.map(q => `<div class="item"><div class="ic">?</div><div><b>${esc(q.title)}</b></div><button class="btn" data-qr="${q.id}">Results</button><button class="btn" data-qd="${q.id}">Delete</button></div>`).join("") || `<div class="mute">No quizzes yet.</div>`}<div id="qres"></div>
+   <h2 style="margin-top:18px">New quiz</h2><label class="f">Title<input type="text" id="qt" maxlength="120"></label><div id="qbs">${qBlock()}</div>
+   <div class="row"><button class="btn" data-aq="1" type="button">Add question</button><button class="btn p" data-sq="1" type="button">Save quiz</button></div><div class="msg" id="qm" role="alert"></div></div>`;
+  const msg = (t, ok) => { $("qm").className = "msg " + (ok ? "g" : "e"); $("qm").textContent = t; };
+  box.onclick = async e => { const d = e.target.dataset;
+    if (d.aq) $("qbs").insertAdjacentHTML("beforeend", qBlock());
+    if (d.rq) e.target.closest(".qb").remove();
+    if (d.sq) { const qs = [];
+      for (const b of box.querySelectorAll(".qb")) { const prompt = b.querySelector(".qp").value.trim(); const checked = +b.querySelector('input[type="radio"]:checked').value;
+        const opts = [...b.querySelectorAll(".qo")].map((o, j) => ({ t: o.value.trim(), j })).filter(o => o.t);
+        if (!prompt || opts.length < 2) return msg("Each question needs a question and at least two options.");
+        const ci = opts.findIndex(o => o.j === checked); if (ci < 0) return msg("Tick a correct answer that has text.");
+        qs.push({ prompt, options: opts.map(o => o.t), correct: ci }); }
+      if (!qs.length) return msg("Add at least one question.");
+      const { error } = await sb.rpc("save_quiz", { p_class: id, p_title: $("qt").value, p_questions: qs }); return error ? msg(error.message) : tQuizzes(k); }
+    if (d.qd && confirm("Delete this quiz and its results?")) { const { error } = await sb.from("quizzes").delete().eq("id", d.qd); return error ? msg(error.message) : tQuizzes(k); }
+    if (d.qr) { const r = await sb.from("quiz_attempts").select("student_id,score,created_at,profiles(display_name)").eq("quiz_id", d.qr).order("created_at", { ascending: false });
+      if (r.error) return msg(r.error.message); const by = new Map(); r.data.forEach(a => { const o = by.get(a.student_id) || { n: a.profiles?.display_name, best: 0, tries: 0 }; o.best = Math.max(o.best, a.score); o.tries++; by.set(a.student_id, o); });
+      $("qres").innerHTML = `<div style="margin-top:10px">${[...by.values()].map(o => `<div class="item"><div><b>${esc(o.n)}</b><small>${o.tries} attempt(s)</small></div><span class="badge">Best ${o.best}%</span></div>`).join("") || `<div class="mute">Nobody has tried it yet.</div>`}</div>`; } };
+}
+
 /* ---- tutor: class list ---- */
 async function tutorHome() {
   $("main").innerHTML = `<h1>My classes</h1><div class="sub">Create a class, share its code, then open it to control what your learners see.</div>
@@ -525,13 +660,14 @@ async function tclassPage() {
     <label class="f">File (PDF, Word, PowerPoint, image or text, up to 10 MB)<input type="file" id="nf" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt"></label>
     <button class="btn p" id="na">Add to class</button>
     <div style="margin-top:12px">${n.data.map(x => `<div class="item"><div class="ic">${ic(ICON.book)}</div><div><b>${esc(x.title)}</b><small>${new Date(x.created_at).toLocaleDateString("en-GB")}${x.file_name ? " · " + esc(x.file_name) : ""}</small></div>${x.file_path ? `<button class="btn" data-f="${esc(x.file_path)}">Open</button>` : ""}<button class="btn" data-dn="${x.id}" data-fp="${esc(x.file_path || "")}">Delete</button></div>`).join("") || `<div class="mute">No notes yet.</div>`}</div></div>
+   <div id="tasg"></div><div id="tqz"></div>
   </div><div>
    <div class="card"><h2>Courses</h2><div class="row"><select id="cs" aria-label="Course to assign"><option value="">Add a course...</option>${co.data.filter(x => !k.class_courses.some(y => y.course_id === x.id)).map(x => `<option value="${x.id}">${esc(x.title)}</option>`).join("")}</select><button class="btn" id="ac">Assign</button></div>
     <div style="margin-top:8px">${co.data.filter(x => k.class_courses.some(y => y.course_id === x.id)).map(x => `<span class="badge">${esc(x.title)}</span>`).join("")}</div></div>
    <div class="card"><h2>Learners</h2>${k.class_memberships.map(s => `<div class="item"><div class="ic">${esc((s.profiles?.display_name || "?").slice(0, 2))}</div><div><b>${esc(s.profiles?.display_name)}</b><small>${esc(s.profiles?.username)}</small></div><button class="btn" data-rm="${s.student_id}">Remove</button></div>`).join("") || `<div class="mute">Nobody has joined yet. Share the code above.</div>`}</div>
    <div class="card"><h2>Learner projects</h2>${pj.data.map(p => `<div class="item"><div class="ic">${ic(ICON.code)}</div><div><b>${esc(p.name)}</b><small>${esc(p.profiles?.display_name)} · ${new Date(p.updated_at).toLocaleDateString("en-GB")}</small></div><button class="btn" data-pv="${p.id}">Preview</button></div>`).join("") || `<div class="mute">No projects saved in this class yet.</div>`}<div id="pvb"></div></div>
   </div></div>`;
-  $("sp").value = pre; const syncHtml = () => { $("shl").hidden = PRESETS[$("sp").value].includes("html"); }; syncHtml(); $("sp").onchange = syncHtml;
+  $("sp").value = pre; tAssign(k); tQuizzes(k); const syncHtml = () => { $("shl").hidden = PRESETS[$("sp").value].includes("html"); }; syncHtml(); $("sp").onchange = syncHtml;
   const note = (t, ok) => { $("note").innerHTML = `<div class="msg ${ok ? "g" : "e"}">${esc(t)}</div>`; };
   $("main").onclick = async e => { const d = e.target.dataset;
     if (d.back) { view = "home"; ctx = null; return renderApp(); }
