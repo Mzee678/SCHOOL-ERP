@@ -1,4 +1,4 @@
-BRAINSPARK is a coding school platform that connects learners, tutors, schools and parents. Learners join a class with a code, learn HTML, CSS and JavaScript in a built-in coding space, read notes, hand in assignments and take quizzes. Tutors control what their class sees. Schools and the platform admin create and manage every account.
+CODEZAAFRICA is a coding school platform that connects learners, tutors, schools and parents. Learners join a class with a code, learn HTML, CSS and JavaScript in a built-in coding space, read notes, hand in assignments and take quizzes. Tutors control what their class sees. Schools and the platform admin create and manage every account.
 
 It runs with no server of its own: the web pages are one static file hosted on GitHub Pages, and Supabase provides the database, login and security rules.
 
